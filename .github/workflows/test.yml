@@ -1,0 +1,24 @@
+name: "units-test"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'releases/*'
+
+jobs:
+  # test local kind start up
+  test_localkind:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: kubectl
+      run: curl -LO https://dl.k8s.io/release/v1.25.4/bin/linux/amd64/kubectl
+    - name: start from local
+      run: ./main.sh
+    - name: verify
+      run: |
+        dpkg -l | grep bcc
+        docker ps -a
+        kind get kubeconfig --name=kind
+        kubectl get pods 
