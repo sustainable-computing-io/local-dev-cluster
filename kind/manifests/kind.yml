@@ -1,6 +1,8 @@
 ---
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  ipFamily: ipv4
 # create a cluster with the local registry enabled in containerd
 containerdConfigPatches:
 - |-
@@ -8,8 +10,6 @@ containerdConfigPatches:
     endpoint = ["http://kind-registry:5000"]
 nodes:
   - role: control-plane
-    networking:
-      ipFamily: ipv4
     extraMounts:
       - hostPath: /proc
         containerPath: /proc-host
