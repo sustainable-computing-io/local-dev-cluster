@@ -65,12 +65,6 @@ aarch64* | arm64*)
     ;;
 esac
 
-# check os
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    SED="gsed"
-else
-    SED="sed"
-fi
 function _get_prometheus_operator_images {
     grep -R "image:" kube-prometheus/manifests/*prometheus-* | awk '{print $3}'
     grep -R "image:" kube-prometheus/manifests/*prometheusOperator* | awk '{print $3}'
@@ -89,7 +83,7 @@ function _load_prometheus_operator_images_to_local_registry {
 
 function _deploy_prometheus_operator {
     git clone -b ${PROMETHEUS_OPERATOR_VERSION} --depth 1 https://github.com/prometheus-operator/kube-prometheus.git
-    $SED -i -e "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml
+    sed "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml | tee -a kube-prometheus/manifests/prometheus-prometheus.yaml > /dev/null
     _load_prometheus_operator_images_to_local_registry
     kubectl create -f kube-prometheus/manifests/setup
     kubectl wait \
@@ -168,12 +162,12 @@ function _prepare_config() {
     echo "Building manifests..."
 
     cp $KIND_MANIFESTS_DIR/kind.yml ${KIND_DIR}/kind.yml
-    $SED -i -e "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/kind.yml
-    $SED -i -e "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/kind.yml
+    sed "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/kind.yml | tee -a ${KIND_DIR}/kind.yml > /dev/null
+    sed "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/kind.yml | tee -a ${KIND_DIR}/kind.yml > /dev/null
     
     cp $KIND_MANIFESTS_DIR/local-registry.yml ${KIND_DIR}/local-registry.yml
-    $SED -i -e "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/local-registry.yml
-    $SED -i -e "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/local-registry.yml
+    sed "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/local-registry.yml | tee -a ${KIND_DIR}/local-registry.yml > /dev/null
+    sed "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/local-registry.yml | tee -a ${KIND_DIR}/local-registry.yml > /dev/null
 
 }
 
