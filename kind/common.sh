@@ -69,7 +69,7 @@ function _get_prometheus_operator_images {
     grep -R "image:" kube-prometheus/manifests/*prometheus-* | awk '{print $3}'
     grep -R "image:" kube-prometheus/manifests/*prometheusOperator* | awk '{print $3}'
     grep -R "prometheus-config-reloader=" kube-prometheus/manifests/ | sed 's/.*=//g'
-    if [ ${GRAFANA_ENABLE,,} == "true" ]; then
+    if [ ${GRAFANA_ENABLE} == "true" ] || [ ${GRAFANA_ENABLE} == "True" ] ; then
         grep -R "image:" kube-prometheus/manifests/*grafana* | awk '{print $3}'
     fi
 }
@@ -83,7 +83,7 @@ function _load_prometheus_operator_images_to_local_registry {
 
 function _deploy_prometheus_operator {
     git clone -b ${PROMETHEUS_OPERATOR_VERSION} --depth 1 https://github.com/prometheus-operator/kube-prometheus.git
-    sed -i -e "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml
+    sed "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml | tee -a kube-prometheus/manifests/prometheus-prometheus.yaml > /dev/null
     _load_prometheus_operator_images_to_local_registry
     kubectl create -f kube-prometheus/manifests/setup
     kubectl wait \
@@ -96,7 +96,7 @@ function _deploy_prometheus_operator {
     for file in $(ls kube-prometheus/manifests/prometheus-*); do
         kubectl create -f $file
     done
-    if [ ${GRAFANA_ENABLE,,} == "true" ]; then
+    if [ ${GRAFANA_ENABLE} == "true" ] || [ ${GRAFANA_ENABLE} == "True" ]; then
         for file in $(ls kube-prometheus/manifests/grafana-*); do
             kubectl create -f $file
         done
@@ -126,7 +126,7 @@ function _fetch_kind() {
     mkdir -p ${KIND_DIR}
     KIND="${KIND_DIR}"/.kind
     if [ -f $KIND ]; then
-        current_kind_version=$($KIND --version |& awk '{print $3}')
+        current_kind_version=$($KIND --version | awk '{print $3}')
     fi
     if [[ $current_kind_version != $KIND_VERSION ]]; then
         echo "Downloading kind v$KIND_VERSION"
@@ -162,12 +162,12 @@ function _prepare_config() {
     echo "Building manifests..."
 
     cp $KIND_MANIFESTS_DIR/kind.yml ${KIND_DIR}/kind.yml
-    sed -i -e "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/kind.yml
-    sed -i -e "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/kind.yml
+    sed "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/kind.yml | tee -a ${KIND_DIR}/kind.yml > /dev/null
+    sed "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/kind.yml | tee -a ${KIND_DIR}/kind.yml > /dev/null
     
     cp $KIND_MANIFESTS_DIR/local-registry.yml ${KIND_DIR}/local-registry.yml
-    sed -i -e "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/local-registry.yml
-    sed -i -e "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/local-registry.yml
+    sed "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/local-registry.yml | tee -a ${KIND_DIR}/local-registry.yml > /dev/null
+    sed "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/local-registry.yml | tee -a ${KIND_DIR}/local-registry.yml > /dev/null
 
 }
 
@@ -198,7 +198,7 @@ function _setup_kind() {
     _wait_containers_ready kube-system
     _run_registry
 
-    if [ ${PROMETHEUS_ENABLE,,} == "true" ]; then
+    if [ ${PROMETHEUS_ENABLE} == "true" ] || [ ${PROMETHEUS_ENABLE} == "True" ]; then
         _deploy_prometheus_operator
     fi
 }
