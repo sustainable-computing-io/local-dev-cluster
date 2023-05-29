@@ -17,7 +17,7 @@
 # Copyright 2022 The Kepler Contributors
 #
 
-set -ex pipefail
+set -eox pipefail
 
 _registry_port="5001"
 _registry_name="kind-registry"
@@ -210,12 +210,27 @@ function _kind_up() {
 }
 
 function main() {
-    _kind_up
-
-    echo "cluster '$CLUSTER_NAME' is ready"
+    if [ "$#" -lt "1" ]
+    then
+        echo "invalid parameter list for $0"
+    elif [ "$#" -eq "0" ]
+    then
+        _kind_up
+        echo "cluster '$CLUSTER_NAME' is ready"
+    elif [ "$1" == "up" ]
+    then
+        _kind_up
+        echo "cluster '$CLUSTER_NAME' is ready"
+    elif [ "$1" == "down" ]
+    then
+        _kind_down
+        echo "cluster '$CLUSTER_NAME' has been deleted"
+    else
+        echo "invalid parameter"
+    fi
 }
 
-function down() {
+function _kind_down() {
     _fetch_kind
     if [ -z "$($KIND get clusters | grep ${CLUSTER_NAME})" ]; then
         return
@@ -226,4 +241,4 @@ function down() {
     rm -f ${KIND_DIR}/kind.yml
 }
 
-main
+main $@
