@@ -17,7 +17,8 @@
 # Copyright 2022 The Kepler Contributors
 #
 
-set -ex pipefail
+set -ex
+set -o pipefail
 
 _registry_port="5001"
 _registry_name="kind-registry"
@@ -210,9 +211,15 @@ function _kind_up() {
 }
 
 function main() {
-    _kind_up
-
-    echo "cluster '$CLUSTER_NAME' is ready"
+    case $1 in
+    up)
+        _kind_up
+        echo "cluster '$CLUSTER_NAME' is ready"
+        ;;
+    down)
+        down
+        ;;
+    esac
 }
 
 function down() {
@@ -226,4 +233,4 @@ function down() {
     rm -f ${KIND_DIR}/kind.yml
 }
 
-main
+main "$@"
