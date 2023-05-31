@@ -217,12 +217,16 @@ function main() {
         echo "cluster '$CLUSTER_NAME' is ready"
         ;;
     down)
-        down
+        _kind_down
+        ;;
+    *)
+        _kind_up
+        echo "cluster '$CLUSTER_NAME' is ready"
         ;;
     esac
 }
 
-function down() {
+function _kind_down() {
     _fetch_kind
     if [ -z "$($KIND get clusters | grep ${CLUSTER_NAME})" ]; then
         return
@@ -230,7 +234,9 @@ function down() {
     # Avoid failing an entire test run just because of a deletion error
     $KIND delete cluster --name=${CLUSTER_NAME} || "true"
     $CTR_CMD rm -f ${REGISTRY_NAME} >> /dev/null
-    rm -f ${KIND_DIR}/kind.yml
+    find ${KIND_DIR} -name kind.yml -maxdepth 1 -delete
+    find ${KIND_DIR} -name local-registry.yml -maxdepth 1 -delete
+    find ${KIND_DIR} -name '.*' -maxdepth 1 -delete
 }
 
 main "$@"
