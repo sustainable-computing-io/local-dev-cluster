@@ -15,7 +15,7 @@ jobs:
     - name: kubectl
       run: curl -LO https://dl.k8s.io/release/v1.25.4/bin/linux/amd64/kubectl
     - name: start from local
-      run: ./main.sh
+      run: ./main.sh up
     - name: verify
       run: |
         dpkg -l | grep bcc

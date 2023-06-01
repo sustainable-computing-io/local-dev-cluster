@@ -16,4 +16,4 @@
 #
 # Copyright 2023 The Kepler Contributors
 #
-./kind/common.sh
+./kind/common.sh $1

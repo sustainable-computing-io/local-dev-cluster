@@ -17,7 +17,8 @@
 # Copyright 2022 The Kepler Contributors
 #
 
-set -ex pipefail
+set -ex
+set -o pipefail
 
 _registry_port="5001"
 _registry_name="kind-registry"
@@ -210,12 +211,22 @@ function _kind_up() {
 }
 
 function main() {
-    _kind_up
-
-    echo "cluster '$CLUSTER_NAME' is ready"
+    case $1 in
+    up)
+        _kind_up
+        echo "cluster '$CLUSTER_NAME' is ready"
+        ;;
+    down)
+        _kind_down
+        ;;
+    *)
+        _kind_up
+        echo "cluster '$CLUSTER_NAME' is ready"
+        ;;
+    esac
 }
 
-function down() {
+function _kind_down() {
     _fetch_kind
     if [ -z "$($KIND get clusters | grep ${CLUSTER_NAME})" ]; then
         return
@@ -223,7 +234,9 @@ function down() {
     # Avoid failing an entire test run just because of a deletion error
     $KIND delete cluster --name=${CLUSTER_NAME} || "true"
     $CTR_CMD rm -f ${REGISTRY_NAME} >> /dev/null
-    rm -f ${KIND_DIR}/kind.yml
+    find ${KIND_DIR} -name kind.yml -maxdepth 1 -delete
+    find ${KIND_DIR} -name local-registry.yml -maxdepth 1 -delete
+    find ${KIND_DIR} -name '.*' -maxdepth 1 -delete
 }
 
-main
+main "$@"

@@ -10,7 +10,8 @@ you need to locate your BCC lib and linux header.
 2. modify kind [config](./kind/manifests/kind.yml) to make sure `extraMounts:` cover linux header and BCC.
 3. The scripts are the source for the kepler cluster commands like `./kind/common.sh`.
 4. [`kubectl`](https://dl.k8s.io/release/v1.25.4)
-5. run `./main.sh` to set up your local env.
+5. run `./main.sh up` to set up your local env.
+6. run `./main.sh down` to tear down your local env.
 
 ## Docker registry
 There's a docker registry available which is exposed at `localhost:5001`.
