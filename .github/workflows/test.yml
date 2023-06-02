@@ -28,17 +28,10 @@ jobs:
     - name: start from local
       run: | 
         export KIND_VERSION=${{matrix.kind_version}}
-        ./main.sh up
+        ./main.sh
     - name: verify
-      # todo: 
-      # - make verification in a shell script
-      # - make checking prometheus
-      # - make checking grafana
       run: |
-        dpkg -l | grep bcc
-        docker ps -a
-        kind get kubeconfig --name=kind
-        kubectl get pods 
+        ./verify.sh
 
 # test local kind start up
   test_localkind_with_prometheus:
@@ -61,12 +54,5 @@ jobs:
         export GRAFANA_ENABLE=${{matrix.grafana_enabled}}
         ./main.sh up
     - name: verify
-      # todo: 
-      # - make verification in a shell script
-      # - make checking prometheus
-      # - make checking grafana
       run: |
-        dpkg -l | grep bcc
-        docker ps -a
-        kind get kubeconfig --name=kind
-        kubectl get pods 
+        ./verify.sh
