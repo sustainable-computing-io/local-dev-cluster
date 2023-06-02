@@ -16,22 +16,19 @@
 #
 # Copyright 2023 The Kepler Contributors
 #
-
+set -x
 ## basic check for bcc
 if [ $(dpkg -l | grep bcc | wc -l) == 0 ]; then
     echo "no bcc package found"
-    dpkg -l | grep bcc
 fi
 ## basic check for k8s cluster info
 if [ $(kind get kubeconfig --name=kind | grep contexts | wc -l) == 0 ]; then
     echo "fail to get kubeconfig by provider"
-    kind get kubeconfig --name=kind
     exit 1
 fi
 ## check k8s system pod is there...
 if [ $(kubectl get pods --all-namespaces | wc -l) == 0 ]; then
     echo "it seems k8s cluster is not started"
-    kubectl get pods --all-namespaces
     exit 1
 fi
 # todo: 
