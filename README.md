@@ -1,6 +1,7 @@
 # Github action for sustainable-computing-io
 
 ![GitHub](https://img.shields.io/github/license/sustainable-computing-io/local-dev-cluster)
+[![units-test](https://github.com/sustainable-computing-io/local-dev-cluster/actions/workflows/test.yml/badge.svg)](https://github.com/sustainable-computing-io/local-dev-cluster/actions/workflows/test.yml)
 
 This repo provides the scripts to create a local kubernetes cluster to used for development or integration tests.
 
