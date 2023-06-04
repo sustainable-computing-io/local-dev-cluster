@@ -183,8 +183,7 @@ function _get_pods() {
 
 function _setup_kind() {
     echo "Starting kind with cluster name \"${CLUSTER_NAME}\""
-    cat ${KIND_DIR}/kind.yml
-    $KIND create cluster --name=${CLUSTER_NAME} -v6 --config=${KIND_DIR}/kind.yml
+    $KIND create cluster --name=${CLUSTER_NAME} -v7 --retain --config=${KIND_DIR}/kind.yml
     $KIND get kubeconfig --name=${CLUSTER_NAME} > ${KIND_DIR}/.kubeconfig
 
     _wait_kind_up
