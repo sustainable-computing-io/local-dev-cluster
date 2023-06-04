@@ -113,7 +113,7 @@ function _wait_kind_up {
         echo "Waiting for kind to be ready ..."
         sleep 10
     done
-    
+
     echo "Waiting for dns to be ready ..."
     kubectl wait -n kube-system --timeout=12m --for=condition=Ready -l k8s-app=kube-dns pods
 }
@@ -182,8 +182,8 @@ function _get_pods() {
 }
 
 function _setup_kind() {
-     echo "Starting kind with cluster name \"${CLUSTER_NAME}\""
-
+    echo "Starting kind with cluster name \"${CLUSTER_NAME}\""
+    cat ${KIND_DIR}/kind.yml
     $KIND create cluster --name=${CLUSTER_NAME} -v6 --config=${KIND_DIR}/kind.yml
     $KIND get kubeconfig --name=${CLUSTER_NAME} > ${KIND_DIR}/.kubeconfig
 
