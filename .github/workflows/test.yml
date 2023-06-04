@@ -71,11 +71,9 @@ jobs:
       run: curl -LO https://dl.k8s.io/release/v1.25.4/bin/linux/amd64/kubectl
     - name: Setup podman
       run: |
+          dnf install -y podman
           podman version
     - name: start from local
-      # Cgroup controller detection is not implemented for Podman. 
-      # If you see cgroup-related errors, you might need to set systemd property "Delegate=yes", 
-      # see https://kind.sigs.k8s.io/docs/user/rootless/
       run: | 
         export KIND_VERSION=0.19.0
         export CTR_CMD=podman
@@ -83,9 +81,5 @@ jobs:
         export GRAFANA_ENABLE=true
         ./main.sh up
     - name: verify
-      # todo: 
-      # - make verification in a shell script
-      # - make checking prometheus
-      # - make checking grafana
       run: |
         ./verify.sh
