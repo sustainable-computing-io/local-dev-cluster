@@ -108,16 +108,12 @@ function _deploy_prometheus_operator {
 
 function _wait_kind_up {
     echo "Waiting for kind to be ready ..."
+
+    while [ -z "$($CTR_CMD exec --privileged ${CLUSTER_NAME}-control-plane kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
+        echo "Waiting for kind to be ready ..."
+        sleep 10
+    done
     
-    if [ $CTR_CMD == "docker" ]; then
-        while [ -z "$($CTR_CMD exec --privileged ${CLUSTER_NAME}-control-plane kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
-            echo "Waiting for kind to be ready ..."
-            sleep 10
-        done
-    fi
-    if [ $CTR_CMD == "podman" ]; then
-        $CTR_CMD ps -a
-    fi
     echo "Waiting for dns to be ready ..."
     kubectl wait -n kube-system --timeout=12m --for=condition=Ready -l k8s-app=kube-dns pods
 }
