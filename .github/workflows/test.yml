@@ -61,6 +61,7 @@ jobs:
   test_localkind_podman:
     runs-on: ubuntu-20.04
     needs: test_localkind_with_prometheus
+    container: fedora:35
     env:
       KIND_EXPERIMENTAL_PROVIDER: "podman"
       PODMAN_VERSION: "stable"
