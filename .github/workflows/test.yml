@@ -64,7 +64,6 @@ jobs:
     container: fedora:35
     env:
       KIND_EXPERIMENTAL_PROVIDER: "podman"
-      PODMAN_VERSION: "stable"
     steps:
     - uses: actions/checkout@v3
     - name: kubectl
