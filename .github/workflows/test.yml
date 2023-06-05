@@ -61,7 +61,7 @@ jobs:
   test_localkind_podman:
     runs-on: ubuntu-20.04
     #needs: test_localkind_with_prometheus
-    #container: fedora:35
+    container: fedora:35
     env:
       KIND_EXPERIMENTAL_PROVIDER: "podman"
       PODMAN_VERSION: "stable"
@@ -71,9 +71,8 @@ jobs:
       run: curl -LO https://dl.k8s.io/release/v1.25.4/bin/linux/amd64/kubectl
     - name: Setup podman
       run: |
+          dnf install -y podman
           podman version
-          sudo apt-get update
-          sudo apt-get -y install dnsmasq
           cp -rf ./known_issue/kind.yml ./kind/manifests
     - name: start from local
       run: | 
