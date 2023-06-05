@@ -69,7 +69,11 @@ jobs:
     - name: Setup podman
       run: |
           dnf install -y podman
+    - name: Check podman verion
+      run: | 
           podman version
+    - name: Check podman verion
+      run: | 
           cp -rf ./known_issue/kind.yml ./kind/manifests
     - name: start from local
       run: | 
