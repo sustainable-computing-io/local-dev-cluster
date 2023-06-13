@@ -24,7 +24,7 @@ _registry_port="5001"
 _registry_name="kind-registry"
 
 CTR_CMD=${CTR_CMD-docker}
-
+PLATFORM=${PLATFORM:-"kind"}
 CONFIG_PATH="kind"
 KIND_VERSION=${KIND_VERSION:-0.17.0}
 KIND_MANIFESTS_DIR="$CONFIG_PATH/manifests"
@@ -32,6 +32,11 @@ CLUSTER_NAME=${KIND_CLUSTER_NAME:-kind}
 REGISTRY_NAME=${REGISTRY_NAME:-kind-registry}
 REGISTRY_PORT=${REGISTRY_PORT:-5001}
 KIND_DEFAULT_NETWORK="kind"
+
+MICROSHIFT_IMAGE=${MICROSHIFT_IMAGE:-quay.io/microshift/microshift-aio}
+MICROSHIFT_TAG=${MICROSHIFT_TAG:-latest}
+MICROSHIFT_CONTAINER_NAME=${MICROSHIFT_CONTAINER_NAME:-microshift}
+DEFAULT_KUBECONFIG_DIR=".kube"
 
 IMAGE_REPO=${IMAGE_REPO:-localhost:5001}
 ESTIMATOR_REPO=${ESTIMATOR_REPO:-quay.io/sustainable_computing_io}
@@ -80,12 +85,40 @@ function _load_prometheus_operator_images_to_local_registry {
         $CTR_CMD pull $img
         $KIND load docker-image $img
     done
-} 
+}
+
+function _fetch_microshift {
+    # pulls the image from quay.io
+    $CTR_CMD pull ${MICROSHIFT_IMAGE}:${MICROSHIFT_TAG}
+}
+
+function _wait_microshift_up {
+    # wait till container is in running state
+    while [ "$(${CTR_CMD} inspect -f '{{.State.Status}}' ${MICROSHIFT_CONTAINER_NAME})" != "running" ];do
+        echo "Waiting for container ${MICROSHIFT_CONTAINER_NAME} to start..."
+        sleep 5
+    done
+    echo "Container $MICROSHIFT_CONTAINER_NAME} is now running!"
+
+    echo "Waiting for cluster to be ready ..."
+
+    while [ -z "$($CTR_CMD exec --privileged ${MICROSHIFT_CONTAINER_NAME} kubectl --kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
+        echo "Waiting for kind to be ready ..."
+        sleep 20
+    done
+}
+
+function _deploy_microshift_cluster {
+    # run the docker container
+    $CTR_CMD run -d --name ${MICROSHIFT_CONTAINER_NAME} --privileged -v microshift-data:/var/lib -p 6443:6443 -p 80:80 -p 443:443 ${MICROSHIFT_IMAGE}:${MICROSHIFT_TAG}
+}
 
 function _deploy_prometheus_operator {
     git clone -b ${PROMETHEUS_OPERATOR_VERSION} --depth 1 https://github.com/prometheus-operator/kube-prometheus.git
     sed "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml | tee -a kube-prometheus/manifests/prometheus-prometheus.yaml > /dev/null
-    _load_prometheus_operator_images_to_local_registry
+    if [ ${PLATFORM} == "kind" ]; then
+        _load_prometheus_operator_images_to_local_registry
+    fi
     kubectl create -f kube-prometheus/manifests/setup
     kubectl wait \
         --for condition=Established \
@@ -204,20 +237,52 @@ function _setup_kind() {
     fi
 }
 
+function _setup_microshift() {
+    echo "Starting microshift cluster"
+    _deploy_microshift_cluster
+    _wait_microshift_up
+    # copy the kubeconfig from container to local
+    mkdir -p ~/${DEFAULT_KUBECONFIG_DIR}
+    $CTR_CMD cp ${MICROSHIFT_CONTAINER_NAME}:/var/lib/microshift/resources/kubeadmin/kubeconfig ~/${DEFAULT_KUBECONFIG_DIR}/config
+    kubectl cluster-info
+    # wait until ocp pods are running
+    while [ -n "$(_get_pods | grep -v Running)" ]; do
+        echo "Waiting for all pods to enter the Running state ..."
+        _get_pods | >&2 grep -v Running || true
+        sleep 10
+    done
+    _wait_containers_ready kube-system
+    if [ ${PROMETHEUS_ENABLE} == "true" ] || [ ${PROMETHEUS_ENABLE} == "True" ]; then
+        _deploy_prometheus_operator
+    fi
+}
+
 function _kind_up() {
     _fetch_kind
     _prepare_config
     _setup_kind
 }
 
+function _microshift_up() {
+    PLATFORM="microshift"
+    _fetch_microshift
+    _setup_microshift
+}
+
 function main() {
     case $1 in
-    up)
+    kind_up)
         _kind_up
         echo "cluster '$CLUSTER_NAME' is ready"
         ;;
-    down)
+    kind_down)
         _kind_down
+        ;;
+    microshift_up)
+        _microshift_up
+        ;;
+    microshift_down)
+        _microshift_down
         ;;
     *)
         _kind_up
@@ -237,6 +302,15 @@ function _kind_down() {
     find ${KIND_DIR} -name kind.yml -maxdepth 1 -delete
     find ${KIND_DIR} -name local-registry.yml -maxdepth 1 -delete
     find ${KIND_DIR} -name '.*' -maxdepth 1 -delete
+}
+
+function _microshift_down() {
+    if [ -z "$($CTR_CMD ps -f name=${MICROSHIFT_CONTAINER_NAME})" ]; then
+        return
+    fi
+    $CTR_CMD rm -f ${MICROSHIFT_CONTAINER_NAME} >> /dev/null
+    $CTR_CMD volume rm -f microshift-data
+    find ~/${DEFAULT_KUBECONFIG_DIR} -delete
 }
 
 main "$@"
