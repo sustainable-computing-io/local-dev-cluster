@@ -103,7 +103,7 @@ function _wait_microshift_up {
     echo "Waiting for cluster to be ready ..."
 
     while [ -z "$($CTR_CMD exec --privileged ${MICROSHIFT_CONTAINER_NAME} kubectl --kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
-        echo "Waiting for kind to be ready ..."
+        echo "Waiting for microshift cluster to be ready ..."
         sleep 20
     done
 }

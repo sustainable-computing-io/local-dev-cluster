@@ -13,7 +13,7 @@ on:
 
 jobs:
   # test local kind start up
-  test_localkind:
+  test_local_kind:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -28,15 +28,15 @@ jobs:
     - name: start from local
       run: | 
         export KIND_VERSION=${{matrix.kind_version}}
-        ./main.sh
+        ./main.sh kind_up
     - name: verify
       run: |
         ./verify.sh
 
-# test local kind start up
-  test_localkind_with_prometheus:
+# test local kind with prometheus grafana
+  test_local_kind_with_prometheus_grafana:
     runs-on: ubuntu-latest
-    needs: test_localkind
+    needs: test_local_kind
     strategy:
       matrix:
         # I suppose we'd better update version pre kepler release.
@@ -52,7 +52,44 @@ jobs:
         export PROMETHEUS_ENABLE=true
         export PROMETHEUS_OPERATOR_VERSION=${{matrix.prometheus_operator_version}}
         export GRAFANA_ENABLE=${{matrix.grafana_enabled}}
-        ./main.sh up
+        ./main.sh kind_up
     - name: verify
       run: |
         ./verify.sh
+
+  # test local microshift start up
+  test_local_microshift:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # I suppose we'd better update version pre kepler release.
+        # keep from current default version and latest version.
+        kubectl_version: [v1.25.4, v1.27.2]
+    steps:
+    - uses: actions/checkout@v3
+    - name: kubectl
+      run: curl -LO https://dl.k8s.io/release/${{matrix.kubectl_version}}/bin/linux/amd64/kubectl
+    - name: start microshift
+      run: |
+        ./main.sh microshift_up
+
+  # test local microshift with prometheus and grafana
+  test_local_microshift_with_prometheus_grafana:
+    runs-on: ubuntu-latest
+    needs: test_local_microshift
+    strategy:
+      matrix:
+        # I suppose we'd better update version pre kepler release.
+        # keep from current default version and latest version.
+        prometheus_operator_version: [v0.11.0, v0.12.0]
+        grafana_enabled: [true, false]
+    steps:
+    - uses: actions/checkout@v3
+    - name: kubectl
+      run: curl -LO https://dl.k8s.io/release/v1.25.4/bin/linux/amd64/kubectl
+    - name: start microshift
+      run: |
+        export PROMETHEUS_ENABLE=true
+        export PROMETHEUS_OPERATOR_VERSION=${{matrix.prometheus_operator_version}}
+        export GRAFANA_ENABLE=${{matrix.grafana_enabled}}
+        ./main.sh microshift_up
