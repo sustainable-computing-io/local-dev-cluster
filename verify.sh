@@ -22,9 +22,11 @@ if [ $(dpkg -l | grep bcc | wc -l) == 0 ]; then
     echo "no bcc package found"
 fi
 ## basic check for k8s cluster info
-if [ $(kind get kubeconfig --name=kind | grep contexts | wc -l) == 0 ]; then
-    echo "fail to get kubeconfig by provider"
-    exit 1
+if [ ${CLUSTER_PROVIDER} == "kind" ]; then
+    if [ $(kind get kubeconfig --name=kind | grep contexts | wc -l) == 0 ]; then
+        echo "fail to get kubeconfig by provider"
+        exit 1
+    fi
 fi
 ## check k8s system pod is there...
 if [ $(kubectl get pods --all-namespaces | wc -l) == 0 ]; then
