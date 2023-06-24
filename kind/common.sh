@@ -21,7 +21,7 @@ set -ex
 set -o pipefail
 
 _registry_port="5001"
-_registry_name="kind-registry"
+_registry_name="registry"
 
 CTR_CMD=${CTR_CMD-docker}
 PLATFORM=${PLATFORM:-"kind"}
@@ -29,9 +29,9 @@ CONFIG_PATH="kind"
 KIND_VERSION=${KIND_VERSION:-0.17.0}
 KIND_MANIFESTS_DIR="$CONFIG_PATH/manifests"
 CLUSTER_NAME=${KIND_CLUSTER_NAME:-kind}
-REGISTRY_NAME=${REGISTRY_NAME:-kind-registry}
+REGISTRY_NAME=${REGISTRY_NAME:-registry}
 REGISTRY_PORT=${REGISTRY_PORT:-5001}
-KIND_DEFAULT_NETWORK="kind"
+DEFAULT_NETWORK="cluster"
 
 MICROSHIFT_IMAGE=${MICROSHIFT_IMAGE:-quay.io/microshift/microshift-aio}
 MICROSHIFT_TAG=${MICROSHIFT_TAG:-latest}
@@ -50,12 +50,12 @@ GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
 
 CONFIG_OUT_DIR=${CONFIG_OUT_DIR:-"_output/generated-manifest"}
 KIND_DIR=${KIND_DIR:-"kind"}
-rm -rf ${CONFIG_OUT_DIR}
-mkdir -p ${CONFIG_OUT_DIR}
+rm -rf "${CONFIG_OUT_DIR}"
+mkdir -p "${CONFIG_OUT_DIR}"
 
 # check CPU arch
-PLATFORM=$(uname -m)
-case ${PLATFORM} in
+CPUArch=$(uname -m)
+case ${CPUArch} in
 x86_64* | i?86_64* | amd64*)
     ARCH="amd64"
     ;;
@@ -75,26 +75,26 @@ function _get_prometheus_operator_images {
     grep -R "image:" kube-prometheus/manifests/*prometheus-* | awk '{print $3}'
     grep -R "image:" kube-prometheus/manifests/*prometheusOperator* | awk '{print $3}'
     grep -R "prometheus-config-reloader=" kube-prometheus/manifests/ | sed 's/.*=//g'
-    if [ ${GRAFANA_ENABLE} == "true" ] || [ ${GRAFANA_ENABLE} == "True" ] ; then
+    if [ "${GRAFANA_ENABLE}" == "true" ] || [ "${GRAFANA_ENABLE}" == "True" ]; then
         grep -R "image:" kube-prometheus/manifests/*grafana* | awk '{print $3}'
     fi
 }
 
 function _load_prometheus_operator_images_to_local_registry {
     for img in $(_get_prometheus_operator_images); do
-        $CTR_CMD pull $img
-        $KIND load docker-image $img
+        $CTR_CMD pull "$img"
+        $KIND load docker-image "$img"
     done
 }
 
 function _fetch_microshift {
     # pulls the image from quay.io
-    $CTR_CMD pull ${MICROSHIFT_IMAGE}:${MICROSHIFT_TAG}
+    $CTR_CMD pull "${MICROSHIFT_IMAGE}":"${MICROSHIFT_TAG}"
 }
 
 function _wait_microshift_up {
     # wait till container is in running state
-    while [ "$(${CTR_CMD} inspect -f '{{.State.Status}}' ${MICROSHIFT_CONTAINER_NAME})" != "running" ];do
+    while [ "$(${CTR_CMD} inspect -f '{{.State.Status}}' "${MICROSHIFT_CONTAINER_NAME}")" != "running" ]; do
         echo "Waiting for container ${MICROSHIFT_CONTAINER_NAME} to start..."
         sleep 5
     done
@@ -102,21 +102,27 @@ function _wait_microshift_up {
 
     echo "Waiting for cluster to be ready ..."
 
-    while [ -z "$($CTR_CMD exec --privileged ${MICROSHIFT_CONTAINER_NAME} kubectl --kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
+    while [ -z "$($CTR_CMD exec --privileged "${MICROSHIFT_CONTAINER_NAME}" \
+        kubectl --kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig \
+        get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
         echo "Waiting for microshift cluster to be ready ..."
         sleep 20
     done
 }
 
 function _deploy_microshift_cluster {
+    # create network for microshift and registry to communicate
+    $CTR_CMD network create ${DEFAULT_NETWORK}
     # run the docker container
-    $CTR_CMD run -d --name ${MICROSHIFT_CONTAINER_NAME} --privileged -v microshift-data:/var/lib -p 6443:6443 -p 80:80 -p 443:443 ${MICROSHIFT_IMAGE}:${MICROSHIFT_TAG}
+    $CTR_CMD run -d --name "${MICROSHIFT_CONTAINER_NAME}" --privileged \
+        -v microshift-data:/var/lib -p 6443:6443 -p 80:80 -p 443:443 --network ${DEFAULT_NETWORK} "${MICROSHIFT_IMAGE}":"${MICROSHIFT_TAG}"
 }
 
 function _deploy_prometheus_operator {
-    git clone -b ${PROMETHEUS_OPERATOR_VERSION} --depth 1 https://github.com/prometheus-operator/kube-prometheus.git
-    sed "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml | tee -a kube-prometheus/manifests/prometheus-prometheus.yaml > /dev/null
-    if [ ${PLATFORM} == "kind" ]; then
+    git clone -b "${PROMETHEUS_OPERATOR_VERSION}" --depth 1 https://github.com/prometheus-operator/kube-prometheus.git
+    sed "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml | \
+        tee -a kube-prometheus/manifests/prometheus-prometheus.yaml >/dev/null
+    if [ "${PLATFORM}" == "kind" ]; then
         _load_prometheus_operator_images_to_local_registry
     fi
     kubectl create -f kube-prometheus/manifests/setup
@@ -125,14 +131,14 @@ function _deploy_prometheus_operator {
         --all CustomResourceDefinition \
         --namespace=monitoring
     for file in $(ls kube-prometheus/manifests/prometheusOperator-*); do
-        kubectl create -f $file
+        kubectl create -f "$file"
     done
     for file in $(ls kube-prometheus/manifests/prometheus-*); do
         kubectl create -f $file
     done
-    if [ ${GRAFANA_ENABLE} == "true" ] || [ ${GRAFANA_ENABLE} == "True" ]; then
+    if [ "${GRAFANA_ENABLE}" == "true" ] || [ "${GRAFANA_ENABLE}" == "True" ]; then
         for file in $(ls kube-prometheus/manifests/grafana-*); do
-            kubectl create -f $file
+            kubectl create -f "$file"
         done
     fi
     rm -rf kube-prometheus
@@ -141,8 +147,9 @@ function _deploy_prometheus_operator {
 
 function _wait_kind_up {
     echo "Waiting for kind to be ready ..."
-    
-    while [ -z "$($CTR_CMD exec --privileged ${CLUSTER_NAME}-control-plane kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
+
+    while [ -z "$($CTR_CMD exec --privileged "${CLUSTER_NAME}"-control-plane kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes \
+        -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
         echo "Waiting for kind to be ready ..."
         sleep 10
     done
@@ -153,13 +160,13 @@ function _wait_kind_up {
 function _wait_containers_ready {
     echo "Waiting for all containers to become ready ..."
     namespace=$1
-    kubectl wait --for=condition=Ready pod --all -n $namespace --timeout 12m
+    kubectl wait --for=condition=Ready pod --all -n "$namespace" --timeout 12m
 }
 
 function _fetch_kind() {
-    mkdir -p ${KIND_DIR}
+    mkdir -p "${KIND_DIR}"
     KIND="${KIND_DIR}"/.kind
-    if [ -f $KIND ]; then
+    if [ -f "$KIND" ]; then
         current_kind_version=$($KIND --version | awk '{print $3}')
     fi
     if [[ $current_kind_version != $KIND_VERSION ]]; then
@@ -174,35 +181,41 @@ function _fetch_kind() {
 }
 
 function _run_registry() {
-    until [ -z "$($CTR_CMD ps -a | grep ${REGISTRY_NAME})" ]; do
-        $CTR_CMD stop ${REGISTRY_NAME} || true
-        $CTR_CMD rm ${REGISTRY_NAME} || true
+    until [ -z "$($CTR_CMD ps -a | grep "${REGISTRY_NAME}")" ]; do
+        $CTR_CMD stop "${REGISTRY_NAME}" || true
+        $CTR_CMD rm "${REGISTRY_NAME}" || true
         sleep 5
     done
 
-    $CTR_CMD run \
-        -d --restart=always \
-        -p "127.0.0.1:${REGISTRY_PORT}:5000" \
-        --name "${REGISTRY_NAME}" \
-        registry:2
-
-    # connect the registry to the cluster network if not already connected
-    $CTR_CMD network connect "${KIND_DEFAULT_NETWORK}" "${REGISTRY_NAME}" || true
-
-    kubectl apply -f ${KIND_DIR}/local-registry.yml
+    if [ "${PLATFORM}" == "kind" ]; then
+        $CTR_CMD run \
+            -d --restart=always \
+            -p "127.0.0.1:${REGISTRY_PORT}:5000" \
+            --name "${REGISTRY_NAME}" \
+            registry:2
+        # connect the registry to the cluster network if not already connected
+        $CTR_CMD network connect "${DEFAULT_NETWORK}" "${REGISTRY_NAME}" || true
+        kubectl apply -f "${KIND_DIR}"/local-registry.yml
+    else
+        $CTR_CMD run \
+            -d --restart=always \
+            -p "127.0.0.1:${REGISTRY_PORT}:5000" \
+            --network "${DEFAULT_NETWORK}" \
+            --name "${REGISTRY_NAME}" \
+            registry:2
+    fi
 }
 
 function _prepare_config() {
     echo "Building manifests..."
 
-    cp $KIND_MANIFESTS_DIR/kind.yml ${KIND_DIR}/kind.yml
-    sed "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/kind.yml | tee -a ${KIND_DIR}/kind.yml > /dev/null
-    sed "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/kind.yml | tee -a ${KIND_DIR}/kind.yml > /dev/null
-    
-    cp $KIND_MANIFESTS_DIR/local-registry.yml ${KIND_DIR}/local-registry.yml
-    sed "s/$_registry_name/${REGISTRY_NAME}/g" ${KIND_DIR}/local-registry.yml | tee -a ${KIND_DIR}/local-registry.yml > /dev/null
-    sed "s/$_registry_port/${REGISTRY_PORT}/g" ${KIND_DIR}/local-registry.yml | tee -a ${KIND_DIR}/local-registry.yml > /dev/null
+    cp $KIND_MANIFESTS_DIR/kind.yml "${KIND_DIR}"/kind.yml
+    sed "s/$_registry_name/${REGISTRY_NAME}/g" "${KIND_DIR}"/kind.yml | tee -a "${KIND_DIR}"/kind.yml >/dev/null
+    sed "s/$_registry_port/${REGISTRY_PORT}/g" "${KIND_DIR}"/kind.yml | tee -a "${KIND_DIR}"/kind.yml >/dev/null
 
+    cp $KIND_MANIFESTS_DIR/local-registry.yml "${KIND_DIR}"/local-registry.yml
+    sed "s/$_registry_name/${REGISTRY_NAME}/g" "${KIND_DIR}"/local-registry.yml | tee -a "${KIND_DIR}"/local-registry.yml >/dev/null
+    sed "s/$_registry_port/${REGISTRY_PORT}/g" "${KIND_DIR}"/local-registry.yml | tee -a "${KIND_DIR}"/local-registry.yml >/dev/null
 }
 
 function _get_nodes() {
@@ -214,10 +227,10 @@ function _get_pods() {
 }
 
 function _setup_kind() {
-     echo "Starting kind with cluster name \"${CLUSTER_NAME}\""
+    echo "Starting kind with cluster name \"${CLUSTER_NAME}\""
 
-    $KIND create cluster --name=${CLUSTER_NAME} -v6 --config=${KIND_DIR}/kind.yml
-    $KIND get kubeconfig --name=${CLUSTER_NAME} > ${KIND_DIR}/.kubeconfig
+    $KIND create cluster --name="${CLUSTER_NAME}" -v6 --config="${KIND_DIR}"/kind.yml
+    $KIND get kubeconfig --name="${CLUSTER_NAME}" >"${KIND_DIR}"/.kubeconfig
 
     _wait_kind_up
     kubectl cluster-info
@@ -232,18 +245,29 @@ function _setup_kind() {
     _wait_containers_ready kube-system
     _run_registry
 
-    if [ ${PROMETHEUS_ENABLE} == "true" ] || [ ${PROMETHEUS_ENABLE} == "True" ]; then
+    if [ "${PROMETHEUS_ENABLE}" == "true" ] || [ "${PROMETHEUS_ENABLE}" == "True" ]; then
         _deploy_prometheus_operator
     fi
+}
+
+function _configure_registry() {
+    # add local registry to microshift container
+    $CTR_CMD exec "$MICROSHIFT_CONTAINER_NAME" /bin/sh -c \
+        "echo -e '[[registry]]\ninsecure = true\nlocation = \"'${REGISTRY_NAME}:5000'\"' >> /etc/containers/registries.conf"
+    sleep 5
+    $CTR_CMD restart "$MICROSHIFT_CONTAINER_NAME"
+    sleep 10
+    _wait_microshift_up
 }
 
 function _setup_microshift() {
     echo "Starting microshift cluster"
     _deploy_microshift_cluster
-    _wait_microshift_up
     # copy the kubeconfig from container to local
     mkdir -p ~/${DEFAULT_KUBECONFIG_DIR}
-    $CTR_CMD cp ${MICROSHIFT_CONTAINER_NAME}:/var/lib/microshift/resources/kubeadmin/kubeconfig ~/${DEFAULT_KUBECONFIG_DIR}/config
+    _run_registry
+    _configure_registry
+    $CTR_CMD cp "${MICROSHIFT_CONTAINER_NAME}":/var/lib/microshift/resources/kubeadmin/kubeconfig ~/${DEFAULT_KUBECONFIG_DIR}/config
     kubectl cluster-info
     # wait until ocp pods are running
     while [ -n "$(_get_pods | grep -v Running)" ]; do
@@ -252,7 +276,7 @@ function _setup_microshift() {
         sleep 10
     done
     _wait_containers_ready kube-system
-    if [ ${PROMETHEUS_ENABLE} == "true" ] || [ ${PROMETHEUS_ENABLE} == "True" ]; then
+    if [ "${PROMETHEUS_ENABLE}" == "true" ] || [ "${PROMETHEUS_ENABLE}" == "True" ]; then
         _deploy_prometheus_operator
     fi
 }
@@ -293,23 +317,25 @@ function main() {
 
 function _kind_down() {
     _fetch_kind
-    if [ -z "$($KIND get clusters | grep ${CLUSTER_NAME})" ]; then
+    if [ -z "$($KIND get clusters | grep "${CLUSTER_NAME}")" ]; then
         return
     fi
     # Avoid failing an entire test run just because of a deletion error
-    $KIND delete cluster --name=${CLUSTER_NAME} || "true"
-    $CTR_CMD rm -f ${REGISTRY_NAME} >> /dev/null
-    find ${KIND_DIR} -name kind.yml -maxdepth 1 -delete
-    find ${KIND_DIR} -name local-registry.yml -maxdepth 1 -delete
-    find ${KIND_DIR} -name '.*' -maxdepth 1 -delete
+    $KIND delete cluster --name="${CLUSTER_NAME}" || "true"
+    $CTR_CMD rm -f "${REGISTRY_NAME}" >>/dev/null
+    find "${KIND_DIR}" -name kind.yml -maxdepth 1 -delete
+    find "${KIND_DIR}" -name local-registry.yml -maxdepth 1 -delete
+    find "${KIND_DIR}" -name '.*' -maxdepth 1 -delete
 }
 
 function _microshift_down() {
-    if [ -z "$($CTR_CMD ps -f name=${MICROSHIFT_CONTAINER_NAME})" ]; then
+    if [ -z "$($CTR_CMD ps -f name="${MICROSHIFT_CONTAINER_NAME}")" ]; then
         return
     fi
-    $CTR_CMD rm -f ${MICROSHIFT_CONTAINER_NAME} >> /dev/null
+    $CTR_CMD rm -f "${MICROSHIFT_CONTAINER_NAME}" >>/dev/null
+    $CTR_CMD rm -f "${REGISTRY_NAME}" >>/dev/null
     $CTR_CMD volume rm -f microshift-data
+    $CTR_CMD network rm ${DEFAULT_NETWORK}
     find ~/${DEFAULT_KUBECONFIG_DIR} -delete
 }
 
