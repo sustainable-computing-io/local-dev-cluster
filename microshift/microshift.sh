@@ -20,6 +20,9 @@
 set -ex
 set -o pipefail
 
+microshift_registry_name="registry"
+MICROSHIFT_DEFAULT_NETWORK="cluster"
+MICROSHIFT_REGISTRY_NAME=${MICROSHIFT_REGISTRY_NAME:-registry}
 MICROSHIFT_IMAGE=${MICROSHIFT_IMAGE:-quay.io/microshift/microshift-aio}
 MICROSHIFT_TAG=${MICROSHIFT_TAG:-latest}
 MICROSHIFT_CONTAINER_NAME=${MICROSHIFT_CONTAINER_NAME:-microshift}
@@ -53,10 +56,10 @@ function _wait_microshift_up {
 
 function _deploy_microshift_cluster {
     # create network for microshift and registry to communicate
-    $CTR_CMD network create ${DEFAULT_NETWORK}
+    $CTR_CMD network create ${MICROSHIFT_DEFAULT_NETWORK}
     # run the docker container
     $CTR_CMD run -d --name "${MICROSHIFT_CONTAINER_NAME}" --privileged \
-        -v microshift-data:/var/lib -p 6443:6443 -p 80:80 -p 443:443 --network ${DEFAULT_NETWORK} "${MICROSHIFT_IMAGE}":"${MICROSHIFT_TAG}"
+        -v microshift-data:/var/lib -p 6443:6443 -p 80:80 -p 443:443 --network ${MICROSHIFT_DEFAULT_NETWORK} "${MICROSHIFT_IMAGE}":"${MICROSHIFT_TAG}"
 }
 
 function _setup_microshift() {
@@ -64,7 +67,7 @@ function _setup_microshift() {
     _deploy_microshift_cluster
     # copy the kubeconfig from container to local
     mkdir -p ~/${DEFAULT_KUBECONFIG_DIR}
-    _run_registry
+    _run_microshift_registry
     _configure_registry
     $CTR_CMD cp "${MICROSHIFT_CONTAINER_NAME}":/var/lib/microshift/resources/kubeadmin/kubeconfig ~/${DEFAULT_KUBECONFIG_DIR}/config
     kubectl cluster-info
@@ -77,6 +80,21 @@ function _setup_microshift() {
     _wait_containers_ready kube-system
 }
 
+function _run_microshift_registry() {
+    until [ -z "$($CTR_CMD ps -a | grep "${MICROSHIFT_REGISTRY_NAME}")" ]; do
+        $CTR_CMD stop "${MICROSHIFT_REGISTRY_NAME}" || true
+        $CTR_CMD rm "${MICROSHIFT_REGISTRY_NAME}" || true
+        sleep 5
+    done
+        
+    $CTR_CMD run \
+        -d --restart=always \
+        -p "127.0.0.1:${REGISTRY_PORT}:5000" \
+        --network "${MICROSHIFT_DEFAULT_NETWORK}" \
+        --name "${MICROSHIFT_REGISTRY_NAME}" \
+        registry:2
+}
+
 function _microshift_up() {
     _fetch_microshift
     _setup_microshift
@@ -87,16 +105,16 @@ function _microshift_down() {
         return
     fi
     $CTR_CMD rm -f "${MICROSHIFT_CONTAINER_NAME}" >>/dev/null
-    $CTR_CMD rm -f "${REGISTRY_NAME}" >>/dev/null
+    $CTR_CMD rm -f "${MICROSHIFT_REGISTRY_NAME}" >>/dev/null
     $CTR_CMD volume rm -f microshift-data
-    $CTR_CMD network rm ${DEFAULT_NETWORK}
+    $CTR_CMD network rm ${MICROSHIFT_DEFAULT_NETWORK}
     find ~/${DEFAULT_KUBECONFIG_DIR} -delete
 }
 
 function _configure_registry() {
     # add local registry to microshift container
     $CTR_CMD exec "$MICROSHIFT_CONTAINER_NAME" /bin/sh -c \
-        "echo -e '[[registry]]\ninsecure = true\nlocation = \"'${REGISTRY_NAME}:5000'\"' >> /etc/containers/registries.conf"
+        "echo -e '[[registry]]\ninsecure = true\nlocation = \"'${MICROSHIFT_REGISTRY_NAME}:5000'\"' >> /etc/containers/registries.conf"
     sleep 5
     $CTR_CMD restart "$MICROSHIFT_CONTAINER_NAME"
     sleep 10

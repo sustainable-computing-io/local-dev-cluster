@@ -25,11 +25,12 @@ GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
 
 function _deploy_prometheus_operator {
     git clone -b "${PROMETHEUS_OPERATOR_VERSION}" --depth 1 https://github.com/prometheus-operator/kube-prometheus.git
-    sed "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml | \
-        tee -a kube-prometheus/manifests/prometheus-prometheus.yaml >/dev/null
-    if [ "${CLUSTER_PROVIDER}" == "kind" ]; then
-        _load_prometheus_operator_images_to_local_registry
-    fi
+    sed "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml > \
+        kube-prometheus/manifests/prometheus-prometheus.yaml.tmp && mv kube-prometheus/manifests/prometheus-prometheus.yaml.tmp \
+        kube-prometheus/manifests/prometheus-prometheus.yaml
+    
+    _load_prometheus_operator_images_to_local_registry
+    
     kubectl create -f kube-prometheus/manifests/setup
     kubectl wait \
         --for condition=Established \
@@ -50,13 +51,6 @@ function _deploy_prometheus_operator {
     _wait_containers_ready monitoring
 }
 
-function _load_prometheus_operator_images_to_local_registry {
-    for img in $(_get_prometheus_operator_images); do
-        $CTR_CMD pull "$img"
-        $KIND load docker-image "$img"
-    done
-}
-
 function _get_prometheus_operator_images {
     grep -R "image:" kube-prometheus/manifests/*prometheus-* | awk '{print $3}'
     grep -R "image:" kube-prometheus/manifests/*prometheusOperator* | awk '{print $3}'
@@ -64,4 +58,25 @@ function _get_prometheus_operator_images {
     if [ ${GRAFANA_ENABLE} == "true" ] || [ ${GRAFANA_ENABLE} == "True" ] ; then
         grep -R "image:" kube-prometheus/manifests/*grafana* | awk '{print $3}'
     fi
+}
+
+function _trim_prometheus_operator_image {
+    echo "${1}" |  awk -F "/" '{ print $NF }'
+}
+
+function _load_prometheus_operator_images_to_local_registry {
+    if [ $CLUSTER_PROVIDER == "kind" ]; then
+        registry="localhost:${REGISTRY_PORT}"
+    else
+        registry="${MICROSHIFT_REGISTRY_NAME}:5000"
+    fi
+    for img in $(_get_prometheus_operator_images); do
+        $CTR_CMD pull "$img"
+        updated_image=$(_trim_prometheus_operator_image $img)
+        $CTR_CMD tag "$img" localhost:5001/${updated_image}
+        $CTR_CMD push localhost:5001/${updated_image}
+        for file in $(grep -R "${img}" kube-prometheus/manifests/* | awk '{print $1}' | cut -d ':' -f 1); do
+            sed "s#${img}#${registry}/${updated_image}#g" ${file} > "${file}.tmp" && mv "${file}.tmp" "${file}"
+        done
+    done
 }

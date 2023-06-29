@@ -20,6 +20,9 @@
 set -ex
 set -o pipefail
 
+kind_registry_name="kind-registry"
+KIND_DEFAULT_NETWORK="kind"
+KIND_REGISTRY_NAME=${KIND_REGISTRY_NAME:-kind-registry}
 CONFIG_PATH="kind"
 KIND_VERSION=${KIND_VERSION:-0.17.0}
 KIND_MANIFESTS_DIR="$CONFIG_PATH/manifests"
@@ -66,12 +69,14 @@ function _prepare_config() {
     echo "Building manifests..."
 
     cp $KIND_MANIFESTS_DIR/kind.yml "${KIND_DIR}"/kind.yml
-    sed "s/$_registry_name/${REGISTRY_NAME}/g" "${KIND_DIR}"/kind.yml | tee -a "${KIND_DIR}"/kind.yml >/dev/null
-    sed "s/$_registry_port/${REGISTRY_PORT}/g" "${KIND_DIR}"/kind.yml | tee -a "${KIND_DIR}"/kind.yml >/dev/null
+    sed "s/$kind_registry_name/${KIND_REGISTRY_NAME}/g" "${KIND_DIR}"/kind.yml > "${KIND_DIR}"/kind.yml.tmp && mv "${KIND_DIR}"/kind.yml.tmp "${KIND_DIR}"/kind.yml
+    sed "s/$_registry_port/${REGISTRY_PORT}/g" "${KIND_DIR}"/kind.yml > "${KIND_DIR}"/kind.yml.tmp && mv "${KIND_DIR}"/kind.yml.tmp "${KIND_DIR}"/kind.yml
 
     cp $KIND_MANIFESTS_DIR/local-registry.yml "${KIND_DIR}"/local-registry.yml
-    sed "s/$_registry_name/${REGISTRY_NAME}/g" "${KIND_DIR}"/local-registry.yml | tee -a "${KIND_DIR}"/local-registry.yml >/dev/null
-    sed "s/$_registry_port/${REGISTRY_PORT}/g" "${KIND_DIR}"/local-registry.yml | tee -a "${KIND_DIR}"/local-registry.yml >/dev/null
+    sed "s/$kind_registry_name/${KIND_REGISTRY_NAME}/g" "${KIND_DIR}"/local-registry.yml > "${KIND_DIR}"/local-registry.yml.tmp && \
+        mv "${KIND_DIR}"/local-registry.yml.tmp "${KIND_DIR}"/local-registry.yml
+    sed "s/$_registry_port/${REGISTRY_PORT}/g" "${KIND_DIR}"/local-registry.yml > "${KIND_DIR}"/local-registry.yml.tmp && \
+        mv "${KIND_DIR}"/local-registry.yml.tmp "${KIND_DIR}"/local-registry.yml
 }
 
 function _setup_kind() {
@@ -82,6 +87,23 @@ function _setup_kind() {
 
     _wait_kind_up
     # wait until k8s pods are running    
+}
+
+function _run_kind_registry() {
+    until [ -z "$($CTR_CMD ps -a | grep "${KIND_REGISTRY_NAME}")" ]; do
+        $CTR_CMD stop "${KIND_REGISTRY_NAME}" || true
+        $CTR_CMD rm "${KIND_REGISTRY_NAME}" || true
+        sleep 5
+    done
+
+    $CTR_CMD run \
+        -d --restart=always \
+        -p "127.0.0.1:${REGISTRY_PORT}:5000" \
+        --name "${KIND_REGISTRY_NAME}" \
+        registry:2
+    # connect the registry to the cluster network if not already connected
+    $CTR_CMD network connect "${KIND_DEFAULT_NETWORK}" "${KIND_REGISTRY_NAME}" || true
+    kubectl apply -f "${KIND_DIR}"/local-registry.yml
 }
 
 function _kind_up() {
@@ -97,7 +119,7 @@ function _kind_down() {
     fi
     # Avoid failing an entire test run just because of a deletion error
     $KIND delete cluster --name=${CLUSTER_NAME} || "true"
-    $CTR_CMD rm -f ${REGISTRY_NAME} >> /dev/null
+    $CTR_CMD rm -f ${KIND_REGISTRY_NAME} >> /dev/null
     find ${KIND_DIR} -name kind.yml -maxdepth 1 -delete
     find ${KIND_DIR} -name local-registry.yml -maxdepth 1 -delete
     find ${KIND_DIR} -name '.*' -maxdepth 1 -delete

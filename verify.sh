@@ -17,22 +17,60 @@
 # Copyright 2023 The Kepler Contributors
 #
 set -x
-## basic check for bcc
-if [ $(dpkg -l | grep bcc | wc -l) == 0 ]; then
-    echo "no bcc package found"
-fi
-## basic check for k8s cluster info
-if [ ${CLUSTER_PROVIDER} == "kind" ]; then
-    if [ $(kind get kubeconfig --name=kind | grep contexts | wc -l) == 0 ]; then
-        echo "fail to get kubeconfig by provider"
+
+NAMESPACE=${NAMESPACE-"monitoring"}
+
+function rollout_status() {
+    kubectl rollout status $1 --namespace $2 --timeout=5m || {
+        echo "fail to check status of ${1} inside namespace ${2}"
+        exit 1
+    }
+}
+
+function verify_bcc() {
+    # basic check for bcc
+    if [ $(dpkg -l | grep bcc | wc -l) == 0 ]; then
+        echo "no bcc package found"
         exit 1
     fi
-fi
-## check k8s system pod is there...
-if [ $(kubectl get pods --all-namespaces | wc -l) == 0 ]; then
-    echo "it seems k8s cluster is not started"
-    exit 1
-fi
-# todo: 
-# - make checking prometheus
-# - make checking grafana
+}
+
+function verify_cluster() {
+    # basic check for k8s cluster info
+    if [ $(kubectl cluster-info) !=0 ]; then
+        echo "fail to get the cluster-info"
+        exit 1
+    fi
+
+    # check k8s system pod is there...
+    if [ $(kubectl get pods --all-namespaces | wc -l) == 0 ]; then
+        echo "it seems k8s cluster is not started"
+        exit 1
+    fi
+
+    # check rollout status
+    resources=$(
+        kubectl get deployments --namespace=$NAMESPACE -o name
+        kubectl get statefulsets --namespace=$NAMESPACE -o name
+    )
+    for res in $resources; do
+        rollout_status $res $NAMESPACE
+    done
+}
+
+function main() {
+    # verify the deployment of cluster
+    case $1 in
+    bcc)
+        verify_bcc
+        ;;
+    cluster)
+        verify_cluster
+        ;;
+    *)
+        verify_bcc
+        verify_cluster
+        ;;
+    esac
+}
+main $1
