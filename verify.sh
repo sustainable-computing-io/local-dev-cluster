@@ -16,61 +16,63 @@
 #
 # Copyright 2023 The Kepler Contributors
 #
-set -x
+set -eu -o pipefail
 
-NAMESPACE=${NAMESPACE-"monitoring"}
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+declare -r PROJECT_ROOT
+source "$PROJECT_ROOT/lib/utils.sh"
 
-function rollout_status() {
-    kubectl rollout status $1 --namespace $2 --timeout=5m || {
-        echo "fail to check status of ${1} inside namespace ${2}"
-        exit 1
-    }
+declare -r NAMESPACE=${NAMESPACE-"monitoring"}
+
+rollout_status() {
+	kubectl rollout status $1 --namespace $2 --timeout=5m ||
+		die "fail to check status of ${1} inside namespace ${2}"
 }
 
-function verify_bcc() {
-    # basic check for bcc
-    if [ $(dpkg -l | grep bcc | wc -l) == 0 ]; then
-        echo "no bcc package found"
-        exit 1
-    fi
+verify_bcc() {
+	# basic check for bcc
+	info "Verifying if bcc package is installed"
+	dpkg -l | grep bcc 2>/dev/null ||
+		rpm -qa | grep bcc 2>/dev/null ||
+		die "no bcc binary found"
+
+	ok "bcc package found"
 }
 
-function verify_cluster() {
-    # basic check for k8s cluster info
-    if [ $(kubectl cluster-info) !=0 ]; then
-        echo "fail to get the cluster-info"
-        exit 1
-    fi
+verify_cluster() {
+	# basic check for k8s cluster info
+	info "Verifying cluster status"
 
-    # check k8s system pod is there...
-    if [ $(kubectl get pods --all-namespaces | wc -l) == 0 ]; then
-        echo "it seems k8s cluster is not started"
-        exit 1
-    fi
+	run kubectl cluster-info || die "failed to get the cluster-info"
 
-    # check rollout status
-    resources=$(
-        kubectl get deployments --namespace=$NAMESPACE -o name
-        kubectl get statefulsets --namespace=$NAMESPACE -o name
-    )
-    for res in $resources; do
-        rollout_status $res $NAMESPACE
-    done
+	# check k8s system pod is there...
+	[[ $(kubectl get pods --all-namespaces | wc -l) == 0 ]] &&
+		die "it seems k8s cluster is not started"
+
+	# check rollout status
+	local resources
+	resources=$(kubectl get deployments,statefulsets -n="$NAMESPACE" -o name)
+	for res in $resources; do
+		rollout_status "$res" "$NAMESPACE"
+	done
+
+	ok "Cluster is up and running"
 }
 
-function main() {
-    # verify the deployment of cluster
-    case $1 in
-    bcc)
-        verify_bcc
-        ;;
-    cluster)
-        verify_cluster
-        ;;
-    *)
-        verify_bcc
-        verify_cluster
-        ;;
-    esac
+main() {
+	# verify the deployment of cluster
+	case $1 in
+	bcc)
+		verify_bcc
+		;;
+	cluster)
+		verify_cluster
+		;;
+	all | *)
+		verify_bcc
+		verify_cluster
+		;;
+	esac
 }
-main $1
+
+main "${1:-all}"

@@ -9,7 +9,7 @@ This repo provides the scripts to create a local [kubernetes](kind/kind.sh)/[ope
 - Locate your BCC lib and linux header.
 - [`kubectl`](https://dl.k8s.io/release/v1.25.4)
 
-## Start up
+## Startup
 1. Modify kind [config](./kind/manifests/kind.yml) to make sure `extraMounts:` cover the linux header and BCC.
 2. Export `CLUSTER_PROVIDER` env variable:
 ```
@@ -23,11 +23,30 @@ export CLUSTER_PROVIDER=kind/microshift
 ```
 ./main.sh down
 ```
+
+Alternatively, use `.env` file to define and override the default configuration
+variables. E.g
+
+```sh
+#.env
+
+CLUSTER_PROVIDER=microshift
+CLUSTER_NAME=microshift
+PROMETHEUS_ENABLE=false
+GRAFANA_ENABLE=false
+```
+
+Start the cluster by running
+```sh
+./main.sh up
+```
+
 ## Container registry
 There's a container registry available which is exposed at `localhost:5001`.
 
-## For kepler contributor
-To set up a local cluster for kepler development We need to make the cluster connected with a local container registry.
+## Note for kepler contributor
+To set up a local cluster for kepler development, we need to make the cluster
+connected with a local container registry.
 
 ### Bump version step for this repo
 1. Check kubectl version.
@@ -35,9 +54,23 @@ To set up a local cluster for kepler development We need to make the cluster con
 3. Check prometheus operator version.
 
 ## How to contribute to this repo
+
 ### A new k8s cluster provider
-You are free to ref kind to contribute a k8s cluster, but we will have a checklist as kepler feature.
-1. Set up the k8s cluster.
-2. The connection between the specific registry and cluster, as for local development usage. We hope to pull the development image to the registry instead of a public registry.
-3. Able to get k8s cluster config, for the test case.
-4. Mount local path for linux kenerl and ebpf(BCC) inside kepler pod.
+Please feel free to refer to [kind provider implementation](providers/kind/kind.sh)
+to contribute a k8s cluster. Please ensure that these checklist are statisfies
+as Kepler requires certain feature to be available.
+
+#### Checklist
+
+- [ ] The provider related script should be placed under `'./provider/<name>/<name.sh>'`
+- [ ] The script should have a `<provider>_up` function that sets up the k8s cluster.
+- [ ] The script should have a `<provider>_down` function that deletes the cluster.
+- [ ] The script should have a `<provider>_kubeconfig` function that prints
+      the path to the cluster's kubeconfig that is located on host machine.
+      Consider using `tmp/<provider>/kubeconfig` as the path to create/copy the
+      kubeconfig file.
+
+- [ ] Ensure cluster can pull from the local specific registry since for local
+      development, we expect to push the development image to the local registry
+      instead of a public registry.
+- [ ] Mount local path of linux kernel and ebpf(BCC) inside kepler pod.
