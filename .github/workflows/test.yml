@@ -12,8 +12,20 @@ on:
       - 'releases/*'
 
 jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        env:
+          SHELLCHECK_OPTS: -x
+
   # test local cluster start up
   test_local_cluster:
+    needs:
+      - shellcheck
     runs-on: ubuntu-latest
     strategy:
       matrix:
