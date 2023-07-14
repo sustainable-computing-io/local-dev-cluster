@@ -34,12 +34,14 @@ declare -r BIN_DIR="$PROJECT_ROOT/tmp/bin"
 # PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-false}
 # CONFIG_OUT_DIR=${CONFIG_OUT_DIR:-"/tmp/generated-manifest"}
 #
+
+# shellcheck disable=SC1091
 [[ -f "$PROJECT_ROOT/.env" ]] && source "$PROJECT_ROOT/.env"
 
 # configuration
 declare -r CTR_CMD=${CTR_CMD:-docker}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
-declare -r CLUSTER_KUBECONFIG=${CLUSTER_KUBECONFIG_FILE:-~/.kube/config}
+declare -r CLUSTER_KUBECONFIG=${CLUSTER_KUBECONFIG:-~/.kube/config}
 
 declare -r REGISTRY_PORT=${REGISTRY_PORT:-5001}
 declare -r CONFIG_OUT_DIR=${CONFIG_OUT_DIR:-"_output/generated-manifest"}
@@ -115,7 +117,7 @@ main() {
 	[[ -f "$cluster_lib" ]] || {
 		err "No Cluster library for $CLUSTER_PROVIDER at $cluster_lib"
 		info "known providers are:"
-		ls providers/ | sed 's|^|  * |g'
+		find providers -maxdepth 1 -mindepth 1 -type d | sed -e 's|providers/|  * |g'
 
 		die "invalid CLUSTER_PROVIDER - '$CLUSTER_PROVIDER'"
 	}
