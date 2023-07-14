@@ -21,7 +21,6 @@ set -eu -o pipefail
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 declare -r PROJECT_ROOT
-declare -r BIN_DIR="$PROJECT_ROOT/tmp/bin"
 
 # NOTE: define environment variables in this file to set the defaults
 #
@@ -32,7 +31,6 @@ declare -r BIN_DIR="$PROJECT_ROOT/tmp/bin"
 # #         This allows PROMETHEUS_ENABLE=true ./main.sh up to override the
 # #         default value.
 # PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-false}
-# CONFIG_OUT_DIR=${CONFIG_OUT_DIR:-"/tmp/generated-manifest"}
 #
 
 # shellcheck disable=SC1091
@@ -44,17 +42,11 @@ declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 declare -r CLUSTER_KUBECONFIG=${CLUSTER_KUBECONFIG:-~/.kube/config}
 
 declare -r REGISTRY_PORT=${REGISTRY_PORT:-5001}
-declare -r CONFIG_OUT_DIR=${CONFIG_OUT_DIR:-"_output/generated-manifest"}
 
 declare -r PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-true}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
 
 source "$PROJECT_ROOT/lib/utils.sh"
-
-init_output_dir() {
-	rm -rf "${CONFIG_OUT_DIR}"
-	mkdir -p "${CONFIG_OUT_DIR}"
-}
 
 cluster_up() {
 	"${CLUSTER_PROVIDER}_up"
@@ -89,7 +81,6 @@ print_config() {
 		kubeconfig file    : $CLUSTER_KUBECONFIG
 
 		container runtime  : $CTR_CMD
-		config output dir  : $CONFIG_OUT_DIR
 		registry port      : $REGISTRY_PORT
 
 		Monitoring
@@ -105,11 +96,6 @@ print_config() {
 main() {
 	# ensure that all relative file refs are relative to the project root
 	cd "$PROJECT_ROOT"
-	mkdir -p "$BIN_DIR"
-
-	# Add tmp/bin to path so that all tools installed to tmp/bin takes precedence
-	# over those in $PATH
-	export PATH="$BIN_DIR:$PATH"
 
 	# NOTE: this cannot moved to main since all declarations in the library
 	# should be in the global namespace
@@ -126,8 +112,6 @@ main() {
 	# shellcheck source=providers/microshift/microshift.sh
 	source "$cluster_lib"
 	print_config
-
-	init_output_dir
 
 	case "$1" in
 	up)

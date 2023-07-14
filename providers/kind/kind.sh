@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Copyright 2022 The Kepler Contributors
+# Copyright 2023 The Kepler Contributors
 #
 
 set -eu -o pipefail
@@ -21,11 +21,9 @@ set -eu -o pipefail
 # configuration
 
 #shellcheck disable=SC2153
-declare -r KIND="$BIN_DIR/kind"
 
 declare -r KIND_DIR="${KIND_DIR:-"$PROJECT_ROOT/tmp/kind"}"
 declare -r KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME:-kind}
-declare -r KIND_VERSION=${KIND_VERSION:-0.17.0}
 declare -r KIND_REGISTRY_NAME=${KIND_REGISTRY_NAME:-kind-registry}
 declare -r KIND_IMAGE_REPO=${KIND_IMAGE_REPO:-localhost:5001}
 
@@ -38,45 +36,12 @@ declare -r KIND_CONFIG_YAML="$KIND_DIR/kind.yml"
 declare -r KIND_REGISTRY_YAML="$KIND_DIR/local-registry.yml"
 declare -r KIND_KUBECONFIG="$KIND_DIR/kubeconfig"
 
-# check CPU arch
-cpu_arch() {
-	case "$(uname -m)" in
-	x86_64* | i?86_64* | amd64*)
-		echo "amd64"
-		;;
-	ppc64le)
-		echo "ppc64le"
-		;;
-	aarch64* | arm64*)
-		echo "arm64"
-		;;
-	*)
-		return 1
-		;;
-	esac
-	return 0
-}
-
-kind_install() {
-	if command -v kind &>/dev/null &&
-		[[ $(kind --version | awk '{print $3}') == "$KIND_VERSION" ]]; then
-		info "kind already installed; skipping installation"
-		return 0
-	fi
-
-	local arch
-	arch="$(cpu_arch)"
-	[[ "$arch" == "" ]] && {
-		err "failed to determine CPU arch; cannot setup kind"
-		return 1
+preinstall_check() {
+	run command -v kind || run command -v kubectl || \
+	{
+		info "See details here: https://github.com/sustainable-computing-io/local-dev-cluster/blob/main/README.md#prerequisites" && \
+		die "Please make sure kind and kubectl have been installed before test"
 	}
-
-	local os="linux"
-	[[ "$OSTYPE" =~ darwin ]] && os=darwin
-
-	info "Downloading kind v$KIND_VERSION for $os - $arch"
-	curl -LSs "https://github.com/kubernetes-sigs/kind/releases/download/v$KIND_VERSION/kind-$os-$arch" -o "$KIND"
-	chmod +x "$KIND"
 }
 
 kind_nodes_ready() {
@@ -114,7 +79,6 @@ _prepare_config() {
 		>"$KIND_CONFIG_YAML"
 
 	sed <"$KIND_MANIFESTS_DIR/local-registry.yml" \
-		-e "s/$default_registry_name/${KIND_REGISTRY_NAME}/g" \
 		-e "s/$default_registry_port/${REGISTRY_PORT}/g" \
 		>"$KIND_REGISTRY_YAML"
 }
@@ -134,11 +98,12 @@ _setup_kind() {
 
 _run_kind_registry() {
 	run_container "$CTR_CMD" registry:2 "$KIND_REGISTRY_NAME" \
-		-p "127.0.0.1:${REGISTRY_PORT}:5000"
+		-p "127.0.0.1:${REGISTRY_PORT}:5000" \
+		--network "${KIND_DEFAULT_NETWORK}"
 
-	# connect the registry to the cluster network if not already connected
-	run $CTR_CMD network connect "${KIND_DEFAULT_NETWORK}" "${KIND_REGISTRY_NAME}" || true
-	run kubectl apply -f "${KIND_DIR}"/local-registry.yml
+	# Document the local registry
+	# https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry
+	run kubectl apply -f "${KIND_REGISTRY_YAML}"
 }
 
 ### exported functions
@@ -147,8 +112,8 @@ kind_print_config() {
 	cat <<-EOF
 		KIND
 		──────────────────────────────────────
-		Binary:  $KIND
-		Version: $KIND_VERSION
+		Binary:  $(command -v kind)
+		Version: $(kind --version | awk '{print $3}')
 
 		Cluster Name : $KIND_CLUSTER_NAME
 		Config file  : $KIND_CONFIG_YAML
@@ -162,7 +127,7 @@ kind_up() {
 	info "Starting KIND cluster $KIND_CLUSTER_NAME"
 	mkdir -p "$KIND_DIR"
 
-	kind_install
+	preinstall_check
 	_prepare_config
 	_setup_kind
 	wait_for_cluster_ready
@@ -172,7 +137,6 @@ kind_up() {
 
 kind_down() {
 	info "Deleting KIND cluster $KIND_CLUSTER_NAME"
-	kind_install
 	if ! kind get clusters 2>/dev/null | grep -q "${KIND_CLUSTER_NAME}"; then
 		ok "No kind cluster $KIND_CLUSTER_NAME found; skipping deletion"
 		return

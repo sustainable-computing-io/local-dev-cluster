@@ -18,15 +18,15 @@
 #
 
 err() {
-	echo -e "ERROR: $*" >&2
+	echo -e "ERROR: $*\n" >&2
 }
 
 info() {
-	echo -e "INFO : $*" >&2
+	echo -e "INFO : $*\n" >&2
 }
 
 die() {
-	echo -e "FATAL: $*" >&2
+	echo -e "FATAL: $*\n" >&2
 	exit 1
 }
 
@@ -39,11 +39,11 @@ run() {
 }
 
 ok() {
-	echo -e "    ✅ $*" >&2
+	echo -e "    ✅ $*\n" >&2
 }
 
 fail() {
-	echo -e "    ❌ $*" >&2
+	echo -e "    ❌ $*\n" >&2
 }
 
 # returns 0 if arg is set to True or true or TRUE else false
