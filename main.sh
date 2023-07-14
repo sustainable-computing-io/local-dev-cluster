@@ -43,8 +43,8 @@ declare -r CLUSTER_KUBECONFIG=${CLUSTER_KUBECONFIG:-~/.kube/config}
 
 declare -r REGISTRY_PORT=${REGISTRY_PORT:-5001}
 
-declare -r PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-true}
-declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-true}
+declare -r PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-false}
+declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
 
 source "$PROJECT_ROOT/lib/utils.sh"
 
