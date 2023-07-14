@@ -32,17 +32,12 @@ jobs:
         # I suppose we'd better update version pre kepler release.
         # keep from current default version and latest version.
         cluster_provider: [kind, microshift]
-        kubectl_version: [v1.27.2]
         # So far we just have a single version for microshift
         # in the future, we should considering have a local test for each cluster providers
-        kind_version: [0.19.0]
     steps:
     - uses: actions/checkout@v3
-    - name: kubectl
-      run: curl -LO https://dl.k8s.io/release/${{matrix.kubectl_version}}/bin/linux/amd64/kubectl
     - name: start from local
       run: | 
-        export KIND_VERSION=${{matrix.kind_version}}
         export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
         ./main.sh up
     - name: verify
@@ -62,8 +57,6 @@ jobs:
         prometheus_operator_version: [v0.12.0]
     steps:
     - uses: actions/checkout@v3
-    - name: kubectl
-      run: curl -LO https://dl.k8s.io/release/v1.25.4/bin/linux/amd64/kubectl
     - name: start from local
       run: | 
         export PROMETHEUS_ENABLE=true

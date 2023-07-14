@@ -7,13 +7,23 @@ This repo provides the scripts to create a local [kubernetes](kind/kind.sh)/[ope
 
 ## Prerequisites
 - Locate your BCC lib and linux header.
-- [`kubectl`](https://dl.k8s.io/release/v1.25.4)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installing-from-release-binaries)
 
+Please install the same version of `kubectl` and `kind` as Github-hosted runner.
+
+Currently Kepler project's Github Action only supports `Ubuntu` based runners.
+
+You can refer to tools list [here](https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md#tools)
 ## Startup
 1. Modify kind [config](./kind/manifests/kind.yml) to make sure `extraMounts:` cover the linux header and BCC.
 2. Export `CLUSTER_PROVIDER` env variable:
 ```
-export CLUSTER_PROVIDER=kind/microshift
+export CLUSTER_PROVIDER=kind
+
+or
+
+export CLUSTER_PROVIDER=microshift
 ```
 3. To setup local env run:
 ```
