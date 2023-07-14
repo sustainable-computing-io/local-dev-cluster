@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # This file is part of the Kepler project
 #
@@ -20,13 +20,14 @@ set -eu -o pipefail
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 declare -r PROJECT_ROOT
+# shellcheck source=lib/utils.sh
 source "$PROJECT_ROOT/lib/utils.sh"
 
 declare -r NAMESPACE=${NAMESPACE-"monitoring"}
 
 rollout_status() {
-	kubectl rollout status $1 --namespace $2 --timeout=5m ||
-		die "fail to check status of ${1} inside namespace ${2}"
+	kubectl rollout status "$1" --namespace "$2" --timeout=5m ||
+		die "failed to check status of ${1} inside namespace ${2}"
 }
 
 verify_bcc() {

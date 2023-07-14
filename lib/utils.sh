@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 #
 # This file is part of the Kepler project
 #
@@ -101,4 +102,30 @@ get_nodes() {
 
 get_pods() {
 	kubectl get pods --all-namespaces --no-headers
+}
+
+container_exists() {
+	local ctr_cmd="$1"
+	local container_name="$2"
+	shift 2
+
+	"$ctr_cmd" ps -a | grep "$container_name"
+}
+
+run_container() {
+	local ctr_cmd="$1"
+	local img="$2"
+	local container_name="$3"
+	shift 3
+
+	while container_exists "$ctr_cmd" "$container_name"; do
+		"$ctr_cmd" stop "${container_name}" || true
+		"$ctr_cmd" rm -v "${container_name}" || true
+		sleep 5
+	done
+
+	run $ctr_cmd run -d --restart=always \
+		--name "$container_name" \
+		"$@" \
+		"$img"
 }

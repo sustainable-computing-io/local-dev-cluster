@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
 #
 # This file is part of the Kepler project
 #
@@ -22,35 +22,46 @@ declare -r PROMETHEUS_OPERATOR_VERSION=${PROMETHEUS_OPERATOR_VERSION:-v0.11.0}
 declare -r PROMETHEUS_REPLICAS=${PROMETHEUS_REPLICAS:-1}
 
 # constants
+
+# constants
+declare -r KUBE_PROM_DIR="$PROJECT_ROOT/tmp/kube-prometheus"
 declare -r MONITORING_NS="monitoring"
 
 deploy_prometheus_operator() {
-	git clone -b "${PROMETHEUS_OPERATOR_VERSION}" --depth 1 https://github.com/prometheus-operator/kube-prometheus.git
-	sed "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" kube-prometheus/manifests/prometheus-prometheus.yaml > \
-		kube-prometheus/manifests/prometheus-prometheus.yaml.tmp && mv kube-prometheus/manifests/prometheus-prometheus.yaml.tmp \
-		kube-prometheus/manifests/prometheus-prometheus.yaml
 
-	_load_prometheus_operator_images_to_local_registry
+	rm -rf "$KUBE_PROM_DIR"
+	# NOTE: starting a subshell so that any exit will reset the PWD back to where it was
+	(
+		cd "$(dirname "$KUBE_PROM_DIR")" || return 1
+		git clone -b "${PROMETHEUS_OPERATOR_VERSION}" --depth 1 https://github.com/prometheus-operator/kube-prometheus.git
 
-	kubectl create -f kube-prometheus/manifests/setup
-	kubectl wait \
-		--for condition=Established \
-		--all CustomResourceDefinition \
-		--namespace="$MONITORING_NS"
+		# NOTE: sed and mv is used since -i does not work on OSX
+		sed -e "s/replicas: 2/replicas: ${PROMETHEUS_REPLICAS}/g" \
+			kube-prometheus/manifests/prometheus-prometheus.yaml > \
+			kube-prometheus/manifests/prometheus-prometheus.yaml.tmp
+		mv kube-prometheus/manifests/prometheus-prometheus.yaml.tmp \
+			kube-prometheus/manifests/prometheus-prometheus.yaml
 
-	for file in $(ls kube-prometheus/manifests/prometheusOperator-*); do
-		kubectl create -f "$file"
-	done
-	for file in $(ls kube-prometheus/manifests/prometheus-*); do
-		kubectl create -f $file
-	done
-	is_set "$GRAFANA_ENABLE" && {
-		for file in $(ls kube-prometheus/manifests/grafana-*); do
-			kubectl create -f "$file"
-		done
-	}
+		_load_prometheus_operator_images_to_local_registry
+		kubectl create -f kube-prometheus/manifests/setup
+		kubectl wait \
+			--for condition=Established \
+			--all CustomResourceDefinition \
+			--namespace="$MONITORING_NS"
 
-	rm -rf kube-prometheus
+		find kube-prometheus/manifests -name 'prometheusOperator-*.yaml' -type f \
+			-exec kubectl create -f {} \;
+
+		find kube-prometheus/manifests -name 'prometheus-*.yaml' -type f \
+			-exec kubectl create -f {} \;
+
+		is_set "$GRAFANA_ENABLE" && {
+			find kube-prometheus/manifests -name 'grafana-*.yaml' -type f \
+				-exec kubectl create -f {} \;
+		}
+
+		rm -rf kube-prometheus
+	)
 	wait_for_pods_in_namespace "$MONITORING_NS"
 }
 
@@ -70,17 +81,25 @@ _trim_prometheus_operator_image() {
 }
 
 _load_prometheus_operator_images_to_local_registry() {
-	if [ $CLUSTER_PROVIDER == "kind" ]; then
+	# TODO: fix this by passing in the registry information to deploy_prometheus_operator
+	# from main
+
+	local registry
+	if [[ "$CLUSTER_PROVIDER" == "kind" ]]; then
 		registry="localhost:${REGISTRY_PORT}"
 	else
 		registry="${MICROSHIFT_REGISTRY_NAME}:5000"
 	fi
+
+	local updated_image
 	for img in $(_get_prometheus_operator_images); do
+		updated_image="$(_trim_prometheus_operator_image "$img")"
 		$CTR_CMD pull "$img"
-		updated_image=$(_trim_prometheus_operator_image $img)
-		$CTR_CMD tag "$img" localhost:5001/${updated_image}
-		$CTR_CMD push localhost:5001/${updated_image}
-		for file in $(grep -R "${img}" kube-prometheus/manifests/* | awk '{print $1}' | cut -d ':' -f 1); do
+		$CTR_CMD tag "$img" "localhost:5001/$updated_image"
+		$CTR_CMD push "localhost:5001/${updated_image}"
+
+		grep -R "${img}" kube-prometheus/manifests/* |
+			awk '{print $1}' | cut -d ':' -f 1 | while read -r file; do
 			# NOTE: can't sed <file >file hence using a tmp file
 			sed <"$file" "s|${img}|${registry}/${updated_image}|g" >"${file}.tmp"
 			mv "${file}.tmp" "${file}"

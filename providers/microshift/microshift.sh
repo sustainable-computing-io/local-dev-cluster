@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 #
 # This file is part of the Kepler project
 #
@@ -25,7 +26,7 @@ declare -r MICROSHIFT_TAG=${MICROSHIFT_TAG:-latest}
 declare -r MICROSHIFT_CONTAINER_NAME=${MICROSHIFT_CONTAINER_NAME:-microshift}
 
 # constants
-declare -r MICROSHIFT_DEFAULT_NETWORK="cluster"
+declare -r MICROSHIFT_CTR_NETWORK="cluster"
 declare -r MICROSHIFT_KUBECONFIG_DIR="$PROJECT_ROOT/tmp/microshift"
 declare -r MICROSHIFT_KUBECONFIG="$MICROSHIFT_KUBECONFIG_DIR/kubeconfig"
 
@@ -34,9 +35,17 @@ function _fetch_microshift {
 	run $CTR_CMD pull "${MICROSHIFT_IMAGE}":"${MICROSHIFT_TAG}"
 }
 
+microshift_nodes_ready() {
+	$CTR_CMD exec --privileged "${MICROSHIFT_CONTAINER_NAME}" \
+		kubectl --kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig \
+		get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True
+
+}
+
 function _wait_microshift_up {
 	# wait till container is in running state
 	info "Waiting for microshift to start"
+
 	while [[ "$(${CTR_CMD} inspect -f '{{.State.Status}}' "${MICROSHIFT_CONTAINER_NAME}")" != "running" ]]; do
 		echo "   ... waiting for container ${MICROSHIFT_CONTAINER_NAME} to start"
 		sleep 5
@@ -44,9 +53,7 @@ function _wait_microshift_up {
 	ok "Container $MICROSHIFT_CONTAINER_NAME is now running!\n"
 
 	info "Waiting for cluster nodes to be ready"
-	while [ -z "$($CTR_CMD exec --privileged "${MICROSHIFT_CONTAINER_NAME}" \
-		kubectl --kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig \
-		get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
+	until microshift_nodes_ready; do
 		echo "    ... waiting for nodes to be ready"
 		sleep 20
 	done
@@ -55,14 +62,15 @@ function _wait_microshift_up {
 
 function _deploy_microshift_cluster {
 	# create network for microshift and registry to communicate
-	run $CTR_CMD network create ${MICROSHIFT_DEFAULT_NETWORK}
+	run $CTR_CMD network create ${MICROSHIFT_CTR_NETWORK}
 	# run the docker container
-	run $CTR_CMD run -d --name "${MICROSHIFT_CONTAINER_NAME}" --privileged \
+	run_container "$CTR_CMD" \
+		"${MICROSHIFT_IMAGE}":"${MICROSHIFT_TAG}" "$MICROSHIFT_CONTAINER_NAME" \
+		--privileged \
 		-v microshift-data:/var/lib -p 6443:6443 \
 		-p 80:80 \
 		-p 443:443 \
-		--network ${MICROSHIFT_DEFAULT_NETWORK} \
-		"${MICROSHIFT_IMAGE}":"${MICROSHIFT_TAG}"
+		--network ${MICROSHIFT_CTR_NETWORK}
 }
 
 function _setup_microshift() {
@@ -89,18 +97,10 @@ function _setup_microshift() {
 function _run_microshift_registry() {
 	info "Running registry for microshift"
 
-	until [ -z "$($CTR_CMD ps -a | grep "${MICROSHIFT_REGISTRY_NAME}")" ]; do
-		$CTR_CMD stop "${MICROSHIFT_REGISTRY_NAME}" || true
-		$CTR_CMD rm -v "${MICROSHIFT_REGISTRY_NAME}" || true
-		sleep 5
-	done
-
-	run $CTR_CMD run \
-		-d --restart=always \
+	run_container "$CTR_CMD" registry:2 \
+		"$MICROSHIFT_REGISTRY_NAME" \
 		-p "127.0.0.1:${REGISTRY_PORT}:5000" \
-		--network "${MICROSHIFT_DEFAULT_NETWORK}" \
-		--name "${MICROSHIFT_REGISTRY_NAME}" \
-		registry:2
+		--network "${MICROSHIFT_CTR_NETWORK}"
 }
 
 function _configure_registry() {
@@ -137,15 +137,15 @@ microshift_print_config() {
 microshift_down() {
 	info "Deleting microshift cluster"
 
-	if [ -z "$($CTR_CMD ps -f name="${MICROSHIFT_CONTAINER_NAME}")" ]; then
+	if ! container_exists "$CTR_CMD" "$MICROSHIFT_CONTAINER_NAME"; then
 		ok "no microshift cluster is running "
 		return
 	fi
 	$CTR_CMD rm -f "${MICROSHIFT_CONTAINER_NAME}" >>/dev/null
 	$CTR_CMD rm -f "${MICROSHIFT_REGISTRY_NAME}" >>/dev/null
 	$CTR_CMD volume rm -f microshift-data
-	$CTR_CMD network rm ${MICROSHIFT_DEFAULT_NETWORK}
-	find ${MICROSHIFT_KUBECONFIG_DIR} -delete
+	$CTR_CMD network rm ${MICROSHIFT_CTR_NETWORK}
+	find "${MICROSHIFT_KUBECONFIG_DIR}" -delete
 	ok "cleaned up microshift"
 }
 

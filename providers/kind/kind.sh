@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # This file is part of the Kepler project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +19,7 @@
 set -eu -o pipefail
 
 # configuration
+
 #shellcheck disable=SC2153
 declare -r KIND="$BIN_DIR/kind"
 
@@ -73,14 +75,20 @@ kind_install() {
 	[[ "$OSTYPE" =~ darwin ]] && os=darwin
 
 	info "Downloading kind v$KIND_VERSION for $os - $arch"
-	curl -LSs https://github.com/kubernetes-sigs/kind/releases/download/v$KIND_VERSION/kind-${os}-${arch} -o "$KIND"
+	curl -LSs "https://github.com/kubernetes-sigs/kind/releases/download/v$KIND_VERSION/kind-$os-$arch" -o "$KIND"
 	chmod +x "$KIND"
+}
+
+kind_nodes_ready() {
+	$CTR_CMD exec --privileged "${KIND_CLUSTER_NAME}"-control-plane \
+		kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes \
+		-o=jsonpath='{.items..status.conditions[-1:].status}' | grep True
 }
 
 kind_wait_up() {
 	info "Waiting for kind to be ready ..."
 
-	while [ -z "$($CTR_CMD exec --privileged "${KIND_CLUSTER_NAME}"-control-plane kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes -o=jsonpath='{.items..status.conditions[-1:].status}' | grep True)" ]; do
+	until kind_nodes_ready; do
 		echo "    ... waiting for all nodes to be ready"
 		sleep 10
 	done
@@ -113,8 +121,6 @@ _prepare_config() {
 
 _setup_kind() {
 	info "Starting kind with cluster name \"${KIND_CLUSTER_NAME}\""
-	echo $PATH
-
 	run kind create cluster --name="${KIND_CLUSTER_NAME}" -v6 --config="$KIND_CONFIG_YAML"
 
 	info "Generating kubeconfig"
@@ -127,17 +133,8 @@ _setup_kind() {
 }
 
 _run_kind_registry() {
-	until [ -z "$($CTR_CMD ps -a | grep "${KIND_REGISTRY_NAME}")" ]; do
-		$CTR_CMD stop "${KIND_REGISTRY_NAME}" || true
-		$CTR_CMD rm "${KIND_REGISTRY_NAME}" || true
-		sleep 5
-	done
-
-	run $CTR_CMD run \
-		-d --restart=always \
-		-p "127.0.0.1:${REGISTRY_PORT}:5000" \
-		--name "${KIND_REGISTRY_NAME}" \
-		registry:2
+	run_container "$CTR_CMD" registry:2 "$KIND_REGISTRY_NAME" \
+		-p "127.0.0.1:${REGISTRY_PORT}:5000"
 
 	# connect the registry to the cluster network if not already connected
 	run $CTR_CMD network connect "${KIND_DEFAULT_NETWORK}" "${KIND_REGISTRY_NAME}" || true
