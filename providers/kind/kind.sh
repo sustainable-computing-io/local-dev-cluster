@@ -36,10 +36,9 @@ declare -r KIND_CONFIG_YAML="$KIND_DIR/kind.yml"
 declare -r KIND_REGISTRY_YAML="$KIND_DIR/local-registry.yml"
 declare -r KIND_KUBECONFIG="$KIND_DIR/kubeconfig"
 
-preinstall_check() {
-	run command -v kind || run command -v kubectl || \
-	{
-		info "See details here: https://github.com/sustainable-computing-io/local-dev-cluster/blob/main/README.md#prerequisites" && \
+kind_preinstall_check() {
+	command -v kind || command -v kubectl || {
+		info "See details here: https://github.com/sustainable-computing-io/local-dev-cluster/blob/main/README.md#prerequisites"
 		die "Please make sure kind and kubectl have been installed before test"
 	}
 }
@@ -127,7 +126,7 @@ kind_up() {
 	info "Starting KIND cluster $KIND_CLUSTER_NAME"
 	mkdir -p "$KIND_DIR"
 
-	preinstall_check
+	kind_preinstall_check
 	_prepare_config
 	_setup_kind
 	wait_for_cluster_ready
