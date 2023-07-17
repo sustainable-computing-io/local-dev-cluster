@@ -145,8 +145,13 @@ kind_down() {
 	run kind delete cluster --name="${KIND_CLUSTER_NAME}" || true
 
 	run $CTR_CMD rm -v -f "${KIND_REGISTRY_NAME}"
-	rm -f "$KIND_CONFIG_YAML" "$KIND_REGISTRY_YAML"
-	find "${KIND_DIR}" -maxdepth 1 -name '.*' -delete
+
+	info "Removing all generated files"
+	run rm -f \
+		"$KIND_CONFIG_YAML" \
+		"$KIND_REGISTRY_YAML" \
+		"$KIND_KUBECONFIG"
+
 	ok "kind cluster deleted successfully"
 }
 
