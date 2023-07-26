@@ -63,6 +63,8 @@ function _wait_microshift_up {
 function _deploy_microshift_cluster {
 	# create network for microshift and registry to communicate
 	run $CTR_CMD network create ${MICROSHIFT_CTR_NETWORK}
+	# create volume for microshift
+	run $CTR_CMD volume create microshift-data --opt type=tmpfs --opt device=tmpfs --opt o=size=7G,uid=1000
 	# run the docker container
 	run_container "$CTR_CMD" \
 		"${MICROSHIFT_IMAGE}":"${MICROSHIFT_TAG}" "$MICROSHIFT_CONTAINER_NAME" \
