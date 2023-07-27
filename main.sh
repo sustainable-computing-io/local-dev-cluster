@@ -59,7 +59,7 @@ cluster_up() {
 	run cp "$kubeconfig" "$CLUSTER_KUBECONFIG"
 	export KUBECONFIG="$CLUSTER_KUBECONFIG"
 
-	if is_set "${PROMETHEUS_ENABLE}" || is_set "GRAFANA_ENABLE"; then
+	if is_set "$PROMETHEUS_ENABLE" || is_set "$GRAFANA_ENABLE"; then
 		source "$PROJECT_ROOT/lib/prometheus.sh"
 		deploy_prometheus_operator
 	fi
@@ -73,6 +73,11 @@ print_config() {
 	local cluster_config
 	cluster_config=$("${CLUSTER_PROVIDER}"_print_config)
 
+	local prom_install_msg="$PROMETHEUS_ENABLE"
+	if ! is_set "$PROMETHEUS_ENABLE" && is_set "$GRAFANA_ENABLE"; then
+		prom_install_msg="false  👈 but will install prometheus because grafana is enabled"
+	fi
+
 	cat <<-EOF
 
 		         Configuration
@@ -84,8 +89,8 @@ print_config() {
 		registry port      : $REGISTRY_PORT
 
 		Monitoring
-		  * Install Prometheus : $PROMETHEUS_ENABLE
-		  * Install Grafana    : $PROMETHEUS_ENABLE
+		  * Install Prometheus : $prom_install_msg
+		  * Install Grafana    : $GRAFANA_ENABLE
 
 		$cluster_config
 		━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
