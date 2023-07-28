@@ -19,8 +19,13 @@
 
 set -eu -o pipefail
 
-PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-declare -r PROJECT_ROOT
+# NOTE: PROJECT_ROOT is the root the local-dev-cluster project
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# CALLER_PROJECT_ROOT is the root of the project from which this script is
+# being called
+CALLER_PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+declare -r PROJECT_ROOT CALLER_PROJECT_ROOT
 
 # NOTE: define environment variables in this file to set the defaults
 #
@@ -34,7 +39,7 @@ declare -r PROJECT_ROOT
 #
 
 # shellcheck disable=SC1091
-[[ -f "$PROJECT_ROOT/.env" ]] && source "$PROJECT_ROOT/.env"
+[[ -f "$CALLER_PROJECT_ROOT/.env" ]] && source "$CALLER_PROJECT_ROOT/.env"
 
 # configuration
 declare -r CTR_CMD=${CTR_CMD:-docker}
