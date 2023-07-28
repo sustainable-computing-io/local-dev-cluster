@@ -50,14 +50,6 @@ kind_nodes_ready() {
 }
 
 kind_wait_up() {
-	info "Waiting for kind to be ready ..."
-
-	until kind_nodes_ready; do
-		echo "    ... waiting for all nodes to be ready"
-		sleep 10
-	done
-	ok "all nodes are up and running"
-
 	info "Waiting for dns to be ready ..."
 	kubectl wait -n kube-system --timeout=12m --for=condition=Ready -l k8s-app=kube-dns pods || {
 		fail "dns pods failed to run"
@@ -92,7 +84,6 @@ _setup_kind() {
 	# NOTE: all providers are expected to
 	ok "copied kubeconfig to $KIND_KUBECONFIG"
 
-	kind_wait_up
 }
 
 _run_kind_registry() {
@@ -130,6 +121,7 @@ kind_up() {
 	_prepare_config
 	_setup_kind
 	wait_for_cluster_ready
+	kind_wait_up
 	_run_kind_registry
 	ok "kind cluster $KIND_CLUSTER_NAME is up and running"
 }

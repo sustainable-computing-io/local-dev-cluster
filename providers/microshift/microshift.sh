@@ -51,13 +51,6 @@ function _wait_microshift_up {
 		sleep 5
 	done
 	ok "Container $MICROSHIFT_CONTAINER_NAME is now running!\n"
-
-	info "Waiting for cluster nodes to be ready"
-	until microshift_nodes_ready; do
-		echo "    ... waiting for nodes to be ready"
-		sleep 20
-	done
-	ok "all nodes in microshift cluster are running"
 }
 
 function _deploy_microshift_cluster {
@@ -93,6 +86,9 @@ function _setup_microshift() {
 	ok "copied kubeconfig to $MICROSHIFT_KUBECONFIG"
 
 	export KUBECONFIG="$MICROSHIFT_KUBECONFIG"
+
+	info "Sleeping for 60s"
+	sleep 60
 	wait_for_cluster_ready
 }
 

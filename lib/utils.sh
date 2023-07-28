@@ -57,7 +57,7 @@ wait_for_pods_in_namespace() {
 	shift
 	local timeout="${1:-15m}"
 
-	info "Waiting for all pods in $namespace to be Ready (max $timeout) ..."
+	info "Waiting for all pods in $namespace to be ready (max $timeout) ..."
 	kubectl wait --for=condition=Ready pod --all -n "$namespace" --timeout="$timeout" || {
 		kubectl get pods --field-selector status.phase!=Running -n "$namespace"
 		fail "pods above in $namespace failed to run"
@@ -65,6 +65,20 @@ wait_for_pods_in_namespace() {
 	}
 
 	ok "All pods in $namespace are running"
+	return 0
+}
+
+# shellcheck disable=SC2120
+wait_for_nodes() {
+	local timeout="${1:-15m}"
+
+	info "Waiting for cluster nodes to be ready (max $timeout) ..."
+
+	kubectl wait --for=condition=Ready "$(kubectl get nodes -o name)" --timeout="$timeout" || {
+		fail "node is not in ready state"
+		return 1
+	}
+	ok "all nodes in cluster are running"
 	return 0
 }
 
@@ -86,7 +100,7 @@ wait_for_all_pods() {
 }
 
 wait_for_cluster_ready() {
-	local timeout="${1:-15m}"
+	wait_for_nodes
 
 	info "Waiting for cluster to be ready"
 	kubectl cluster-info
