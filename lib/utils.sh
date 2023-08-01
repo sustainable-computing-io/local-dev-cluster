@@ -18,15 +18,30 @@
 #
 
 err() {
-	echo -e "ERROR: $*\n" >&2
+	echo -e "$(date -u +%H:%M:%S) 😱 ERROR: $*\n" >&2
 }
 
 info() {
-	echo -e "INFO : $*\n" >&2
+	echo -e "$(date -u +%H:%M:%S) 🔔 INFO : $*\n" >&2
+}
+
+header() {
+	local title="🔆🔆🔆  $*  🔆🔆🔆 "
+
+	local len=40
+	if [[ ${#title} -gt $len ]]; then
+		len=${#title}
+	fi
+
+	echo -e "\n\n  \033[1m${title}\033[0m"
+	echo -n "━━━━━"
+	printf '━%.0s' $(seq "$len")
+	echo "━━━━━━━"
+
 }
 
 die() {
-	echo -e "FATAL: $*\n" >&2
+	echo -e "$(date -u +%H:%M:%S) 💀 FATAL: $*\n" >&2
 	exit 1
 }
 
@@ -52,15 +67,85 @@ is_set() {
 	[[ "$1" =~ true|TRUE|True ]]
 }
 
-wait_for_pods_in_namespace() {
-	local namespace=$1
-	shift
-	local timeout="${1:-15m}"
+# wait_for_resource waits for max_tries x timeout for resource to be in condition
+# if it does not reach in the condition in the given time, the function returns 1
+# NOTE: a selector must be passed to the function as additional argument. E.g.
+# wait_for_resource 5 1m nodes --all (--all is the selector)
+wait_for_resource() {
+	local max_tries="$1"
+	local timeout="$2"
+	local resource="$3"
+	local condition="$4"
+	shift 4
 
-	info "Waiting for all pods in $namespace to be ready (max $timeout) ..."
-	kubectl wait --for=condition=Ready pod --all -n "$namespace" --timeout="$timeout" || {
-		kubectl get pods --field-selector status.phase!=Running -n "$namespace"
-		fail "pods above in $namespace failed to run"
+	info "Waiting for $resource to be in $condition state"
+
+	local -i tries=0
+	while ! kubectl wait --for=condition="$condition" --timeout="2s" \
+		"$resource" "$@" && [[ $tries -lt $max_tries ]]; do
+
+		tries=$((tries + 1))
+		echo "   ... [$tries / $max_tries]: waiting ($timeout) for $resource to be $condition"
+		sleep "$timeout"
+	done
+
+	kubectl wait --for=condition="$condition" "$resource" "$@" --timeout=0 || {
+		fail "$resource $* failed to be in $condition state"
+		return 1
+	}
+
+	ok "$resource matching $* are in $condition state"
+	return 0
+}
+
+wait_for_crds() {
+	header "Waiting for crds to be established"
+
+	# ensure kubectl get crds works before trying to wait for crds to be established
+	[[ $(kubectl get crds -o name | wc -l) -eq 0 ]] && {
+		info "no crds found; not waiting for crds to be established"
+		return 0
+	}
+	wait_for_resource 20 15 crds Established --all
+}
+
+wait_for_nodes() {
+	header "Waiting for nodes to be ready"
+
+	# ensure kubectl get nodes works before trying to wait for them
+	info "Waiting for nodes to come up"
+	local -i max_tries=10
+	local -i tries=0
+	while [[ $(kubectl get nodes -o name | wc -l) -eq 0 ]] && [[ $tries -lt $max_tries ]]; do
+		tries=$((tries + 1))
+		echo "  ... [$tries / $max_tries] waiting for at least one node to come up"
+		sleep 20
+	done
+
+	wait_for_resource 20 30 nodes Ready --all
+}
+
+wait_for_all_pods() {
+	header "Waiting for all pods to be ready"
+
+	wait_for_resource 20 30 pods Ready --all --all-namespaces || {
+		fail "Pods below failed to run"
+		kubectl get pods --field-selector status.phase!=Running --all-namespaces || true
+		return 1
+	}
+
+	return 0
+}
+
+wait_for_pods_in_namespace() {
+	local namespace="$1"
+	shift 1
+
+	header "Waiting for pods in $namespace to be ready"
+
+	wait_for_resource 10 30 pods Ready --all -n "$namespace" || {
+		fail "Pods below failed to run"
+		kubectl get pods --field-selector status.phase!=Running -n "$namespace" || true
 		return 1
 	}
 
@@ -68,45 +153,15 @@ wait_for_pods_in_namespace() {
 	return 0
 }
 
-# shellcheck disable=SC2120
-wait_for_nodes() {
-	local timeout="${1:-15m}"
-
-	info "Waiting for cluster nodes to be ready (max $timeout) ..."
-
-	kubectl wait --for=condition=Ready "$(kubectl get nodes -o name)" --timeout="$timeout" || {
-		fail "node is not in ready state"
-		return 1
-	}
-	ok "all nodes in cluster are running"
-	return 0
-}
-
-# shellcheck disable=SC2120
-wait_for_all_pods() {
-	local timeout="${1:-15m}"
-
-	info "Waiting for all pods to be ready (max $timeout) ..."
-
-	kubectl wait --for=condition=Ready pods --all --all-namespaces --timeout="$timeout" || {
-		kubectl get pods --field-selector status.phase!=Running --all-namespaces
-		fail "pods above failed to run"
-		return 1
-
-	}
-
-	ok "All pods in the cluster are running"
-	return 0
-}
-
 wait_for_cluster_ready() {
-	wait_for_nodes
-
-	info "Waiting for cluster to be ready"
+	header "Waiting for cluster to be ready"
 	kubectl cluster-info
 
+	wait_for_nodes
 	wait_for_pods_in_namespace kube-system
+	wait_for_crds
 	wait_for_all_pods
+
 	ok "Cluster is ready\n\n"
 }
 
