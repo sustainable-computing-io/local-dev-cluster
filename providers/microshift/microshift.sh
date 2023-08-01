@@ -87,8 +87,6 @@ function _setup_microshift() {
 
 	export KUBECONFIG="$MICROSHIFT_KUBECONFIG"
 
-	info "Sleeping for 60s"
-	sleep 60
 	wait_for_cluster_ready
 }
 
