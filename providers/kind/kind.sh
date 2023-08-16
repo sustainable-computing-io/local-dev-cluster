@@ -26,11 +26,10 @@ declare -r KIND_DIR="${KIND_DIR:-"$PROJECT_ROOT/tmp/kind"}"
 declare -r KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME:-kind}
 declare -r KIND_REGISTRY_NAME=${KIND_REGISTRY_NAME:-kind-registry}
 declare -r KIND_IMAGE_REPO=${KIND_IMAGE_REPO:-localhost:5001}
+declare -r KIND_WORKER_NODES=${KIND_WORKER_NODES:-0}
 
 # constants
-declare -r KIND_CONFIG_PATH="$PROJECT_ROOT/providers/kind"
-declare -r KIND_MANIFESTS_DIR="$KIND_CONFIG_PATH/manifests"
-
+declare -r KIND_MANIFESTS_DIR="$PROJECT_ROOT/providers/kind/manifests"
 declare -r KIND_DEFAULT_NETWORK="kind"
 declare -r KIND_CONFIG_YAML="$KIND_DIR/kind.yml"
 declare -r KIND_REGISTRY_YAML="$KIND_DIR/local-registry.yml"
@@ -68,6 +67,18 @@ _prepare_config() {
 		-e "s/$default_registry_name/${KIND_REGISTRY_NAME}/g" \
 		-e "s/$default_registry_port/${REGISTRY_PORT}/g" \
 		>"$KIND_CONFIG_YAML"
+
+	for ((i = 0; i < KIND_WORKER_NODES; i++)); do
+		cat <<-EOF_NODE >>"$KIND_CONFIG_YAML"
+			  - role: worker
+			    extraMounts:
+			      - hostPath: /proc
+			        containerPath: /proc-host
+			      - hostPath: /usr/src
+			        containerPath: /usr/src
+
+		EOF_NODE
+	done
 
 	sed <"$KIND_MANIFESTS_DIR/local-registry.yml" \
 		-e "s/$default_registry_port/${REGISTRY_PORT}/g" \
