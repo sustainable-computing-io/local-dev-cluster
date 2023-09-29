@@ -36,7 +36,7 @@ declare -r KIND_REGISTRY_YAML="$KIND_DIR/local-registry.yml"
 declare -r KIND_KUBECONFIG="$KIND_DIR/kubeconfig"
 
 kind_preinstall_check() {
-	command -v kind || command -v kubectl || {
+	(command -v kind && command -v kubectl) || {
 		info "See details here: https://github.com/sustainable-computing-io/local-dev-cluster/blob/main/README.md#prerequisites"
 		die "Please make sure kind and kubectl have been installed before test"
 	}
