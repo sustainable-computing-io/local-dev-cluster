@@ -15,5 +15,9 @@ nodes:
         containerPath: /proc-host
       - hostPath: /usr/src
         containerPath: /usr/src
+      - hostPath: /sys/class
+        containerPath: /sys/class
+      - hostPath: /sys/devices/virtual/powercap
+        containerPath: /sys/class/powercap
 
 # NOTE: worker nodes will be added by the script here
