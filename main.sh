@@ -44,7 +44,8 @@ declare -r PROJECT_ROOT CALLER_PROJECT_ROOT
 # configuration
 declare -r CTR_CMD=${CTR_CMD:-docker}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
-declare -r CLUSTER_KUBECONFIG=${CLUSTER_KUBECONFIG:-~/.kube/config}
+declare -r KUBECONFIG_ROOT_DIR=${KUBECONFIG_ROOT_DIR:-$HOME/.kube}
+declare -r KEPLER_KUBECONFIG=${KEPLER_KUBECONFIG:-config-kepler}
 
 declare -r REGISTRY_PORT=${REGISTRY_PORT:-5001}
 
@@ -56,13 +57,19 @@ source "$PROJECT_ROOT/lib/utils.sh"
 cluster_up() {
 	"${CLUSTER_PROVIDER}_up"
 
-	info "Coping $CLUSTER_PROVIDER kubeconfig to $CLUSTER_KUBECONFIG"
+	info "Coping $CLUSTER_PROVIDER kubeconfig to $KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
 	local kubeconfig
 	kubeconfig="$("${CLUSTER_PROVIDER}"_kubeconfig)"
 
-	mkdir -p "$(basename "$CLUSTER_KUBECONFIG")"
-	run cp "$kubeconfig" "$CLUSTER_KUBECONFIG"
-	export KUBECONFIG="$CLUSTER_KUBECONFIG"
+	mkdir -p "$(basename "$KUBECONFIG_ROOT_DIR"/)"
+	mv -f "$kubeconfig" "$KUBECONFIG_ROOT_DIR"/"$KEPLER_KUBECONFIG"
+	
+	kubeconfig=$(find "$KUBECONFIG_ROOT_DIR" -type f -name "*config*" | tr '\n' ':') 
+	KUBECONFIG=$kubeconfig kubectl config view --flatten > all-in-one-kubeconfig.yaml
+	mv -f all-in-one-kubeconfig.yaml "$KUBECONFIG_ROOT_DIR"/config
+	export KUBECONFIG="$KUBECONFIG_ROOT_DIR"/config
+
+	kubectl config --kubeconfig="$KUBECONFIG" set-cluster kind-kepler
 
 	if is_set "$PROMETHEUS_ENABLE" || is_set "$GRAFANA_ENABLE"; then
 		source "$PROJECT_ROOT/lib/prometheus.sh"
@@ -72,6 +79,9 @@ cluster_up() {
 
 cluster_down() {
 	"$CLUSTER_PROVIDER"_down
+	rm "$KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
+	export KUBECONFIG="$KUBECONFIG_ROOT_DIR"/config
+	kubectl --kubeconfig="$KUBECONFIG" config unset clusters.kind-kepler
 }
 
 print_config() {
@@ -88,7 +98,7 @@ print_config() {
 		         Configuration
 		━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 		cluster provider   : $CLUSTER_PROVIDER
-		kubeconfig file    : $CLUSTER_KUBECONFIG
+		kubeconfig file    : $KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG
 
 		container runtime  : $CTR_CMD
 		registry port      : $REGISTRY_PORT
