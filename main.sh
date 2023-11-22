@@ -61,15 +61,16 @@ cluster_up() {
 	local kubeconfig
 	kubeconfig="$("${CLUSTER_PROVIDER}"_kubeconfig)"
 
-	mkdir -p "$(basename "$KUBECONFIG_ROOT_DIR"/)"
-	mv -f "$kubeconfig" "$KUBECONFIG_ROOT_DIR"/"$KEPLER_KUBECONFIG"
-	
-	kubeconfig=$(find "$KUBECONFIG_ROOT_DIR" -type f -name "*config*" | tr '\n' ':') 
-	KUBECONFIG=$kubeconfig kubectl config view --flatten > all-in-one-kubeconfig.yaml
-	mv -f all-in-one-kubeconfig.yaml "$KUBECONFIG_ROOT_DIR"/config
-	export KUBECONFIG="$KUBECONFIG_ROOT_DIR"/config
+	mkdir -p "$(basename "$KUBECONFIG_ROOT_DIR")"
+	mv -f "$kubeconfig" "${KUBECONFIG_ROOT_DIR}/${KEPLER_KUBECONFIG}"
 
-	kubectl config --kubeconfig="$KUBECONFIG" set-cluster kind-kepler
+	kubeconfig="$KUBECONFIG_ROOT_DIR/config":$(find "$KUBECONFIG_ROOT_DIR" \
+		-type f -name "*config*" | tr '\n' ':')
+	kubeconfig=${kubeconfig%:}
+	KUBECONFIG=$kubeconfig kubectl config view --merge --flatten >all-in-one-kubeconfig.yaml
+	mv -f all-in-one-kubeconfig.yaml "${KUBECONFIG_ROOT_DIR}/config"
+
+	export KUBECONFIG="${KUBECONFIG_ROOT_DIR}/config"
 
 	if is_set "$PROMETHEUS_ENABLE" || is_set "$GRAFANA_ENABLE"; then
 		source "$PROJECT_ROOT/lib/prometheus.sh"
@@ -80,8 +81,6 @@ cluster_up() {
 cluster_down() {
 	"$CLUSTER_PROVIDER"_down
 	rm "$KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
-	export KUBECONFIG="$KUBECONFIG_ROOT_DIR"/config
-	kubectl --kubeconfig="$KUBECONFIG" config unset clusters.kind-kepler
 }
 
 print_config() {
