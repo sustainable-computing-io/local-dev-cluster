@@ -90,7 +90,7 @@ _setup_kind() {
 	run kind create cluster --name="${KIND_CLUSTER_NAME}" -v6 --config="$KIND_CONFIG_YAML"
 
 	info "Generating kubeconfig"
-	kind get kubeconfig --name="${KIND_CLUSTER_NAME}" | sed 's/kind-kind/kind-kepler/' > "$KIND_KUBECONFIG"
+	kind get kubeconfig --name="${KIND_CLUSTER_NAME}" >"$KIND_KUBECONFIG"
 
 	# NOTE: all providers are expected to
 	ok "copied kubeconfig to $KIND_KUBECONFIG"
