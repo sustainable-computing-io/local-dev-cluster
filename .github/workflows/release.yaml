@@ -45,6 +45,12 @@ jobs:
         run: |
           git push --follow-tags
 
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.2.0
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -53,5 +59,6 @@ jobs:
         with:
           tag_name: "v${{ github.event.inputs.tag }}"
           release_name: "v${{github.event.inputs.tag}}"
+          body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
