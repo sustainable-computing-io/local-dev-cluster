@@ -14,7 +14,7 @@ Please install the same version of `kubectl` and `kind` as Github-hosted runner.
 
 Currently Kepler project's Github Action only supports `Ubuntu` based runners.
 
-You can refer to tools list [here](https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md#tools)
+You can refer to tools list [here](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#tools)
 ## Startup
 1. Modify kind [config](./kind/manifests/kind.yml) to make sure `extraMounts:` cover the linux header and BCC.
 2. Export `CLUSTER_PROVIDER` env variable:
