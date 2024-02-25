@@ -96,7 +96,7 @@ _load_prometheus_operator_images_to_local_registry() {
 		updated_image="$(_trim_prometheus_operator_image "$img")"
 		$CTR_CMD pull "$img"
 		$CTR_CMD tag "$img" "localhost:5001/$updated_image"
-		$CTR_CMD push "localhost:5001/${updated_image}"
+		$CTR_CMD push "localhost:5001/${updated_image}" --tls-verify=false
 
 		grep -R "${img}" kube-prometheus/manifests/* |
 			awk '{print $1}' | cut -d ':' -f 1 | while read -r file; do
