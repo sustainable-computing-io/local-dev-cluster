@@ -51,6 +51,7 @@ declare -r REGISTRY_PORT=${REGISTRY_PORT:-5001}
 
 declare -r PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-false}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
+declare -r TEKTON_ENABLE=${TEKTON_ENABLE:-false}
 
 source "$PROJECT_ROOT/lib/utils.sh"
 
@@ -75,6 +76,12 @@ cluster_up() {
 	if is_set "$PROMETHEUS_ENABLE" || is_set "$GRAFANA_ENABLE"; then
 		source "$PROJECT_ROOT/lib/prometheus.sh"
 		deploy_prometheus_operator
+	fi
+
+	if is_set "$TEKTON_ENABLE"; then
+		kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+		rollout_ns_status tekton-pipelines
+        rollout_ns_status tekton-pipelines-resolvers
 	fi
 }
 
@@ -105,6 +112,9 @@ print_config() {
 		Monitoring
 		  * Install Prometheus : $prom_install_msg
 		  * Install Grafana    : $GRAFANA_ENABLE
+
+		Tekton
+		  * Install Tekton : $TEKTON_ENABLE
 
 		$cluster_config
 		━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

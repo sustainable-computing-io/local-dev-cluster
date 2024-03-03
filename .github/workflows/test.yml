@@ -23,46 +23,63 @@ jobs:
           SHELLCHECK_OPTS: -x
 
   # test local cluster without prometheus grafana
-  test_local_cluster_without_prometheus_grafana:
+  test_local_cluster:
     needs:
       - shellcheck
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        # I suppose we'd better update version pre kepler release.
-        # keep from current default version and latest version.
-        cluster_provider: [kind, microshift]
-        # So far we just have a single version for microshift
-        # in the future, we should considering have a local test for each cluster providers
+        include:
+        - cluster_provider: kind
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: false
+          GRAFANA_ENABLE: false
+          TEKTON_ENABLE: false
+        - cluster_provider: kind
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: true
+          GRAFANA_ENABLE: true
+          TEKTON_ENABLE: false
+        - cluster_provider: kind
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: false
+          GRAFANA_ENABLE: false
+          TEKTON_ENABLE: true
+        - cluster_provider: kind
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: true
+          GRAFANA_ENABLE: true
+          TEKTON_ENABLE: true
+        - cluster_provider: microshift
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: false
+          GRAFANA_ENABLE: false
+          TEKTON_ENABLE: false
+        - cluster_provider: microshift
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: true
+          GRAFANA_ENABLE: true
+          TEKTON_ENABLE: false
+        - cluster_provider: microshift
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: false
+          GRAFANA_ENABLE: false
+          TEKTON_ENABLE: true
+        - cluster_provider: microshift
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: true
+          GRAFANA_ENABLE: true
+          TEKTON_ENABLE: true        
     steps:
     - uses: actions/checkout@v3
     - name: start from local
       run: | 
-        export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
-        ./main.sh up
-    - name: verify
-      run: |
-        export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
-        ./verify.sh
-
-# test local cluster with prometheus grafana
-  test_local_cluster_with_prometheus_grafana:
-    runs-on: ubuntu-latest
-    needs: test_local_cluster_without_prometheus_grafana
-    strategy:
-      matrix:
-        # I suppose we'd better update version pre kepler release.
-        # keep from current default version and latest version.
-        cluster_provider: [kind, microshift]
-        prometheus_operator_version: [v0.12.0]
-    steps:
-    - uses: actions/checkout@v3
-    - name: start from local
-      run: | 
-        export PROMETHEUS_ENABLE=true
+        export PROMETHEUS_ENABLE=${{matrix.PROMETHEUS_ENABLE}}
         export PROMETHEUS_OPERATOR_VERSION=${{matrix.prometheus_operator_version}}
-        export GRAFANA_ENABLE=true
+        export GRAFANA_ENABLE=${{matrix.GRAFANA_ENABLE}}
         export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
+        export TEKTON_ENABLE=${{matrix.TEKTON_ENABLE}}
         ./main.sh up
     - name: verify
       run: |
