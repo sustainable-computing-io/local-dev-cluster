@@ -17,6 +17,7 @@
 # Copyright 2023 The Kepler Contributors
 #
 
+# shellcheck disable=SC2086
 err() {
 	echo -e "ERROR: $*\n" >&2
 }
