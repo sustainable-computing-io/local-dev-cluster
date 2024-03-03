@@ -143,3 +143,11 @@ run_container() {
 		"$@" \
 		"$img"
 }
+
+rollout_ns_status() {
+	local resources
+	resources=$(kubectl get deployments,statefulsets,daemonsets -n=$1 -o name)
+	for res in $resources; do
+		kubectl rollout status $res --namespace $1 --timeout=10m || die "failed to check status of ${res} inside namespace ${1}"
+	done
+}
