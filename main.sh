@@ -71,7 +71,7 @@ cluster_up() {
 	fi
 
 	if is_set "$TEKTON_ENABLE"; then
-		kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yamls
+		kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 		rollout_ns_status tekton-pipelines
         rollout_ns_status tekton-pipelines-resolvers
 	fi
