@@ -20,6 +20,7 @@ set -eu -o pipefail
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 declare -r PROJECT_ROOT
+declare -r KUBECONFIG_ROOT_DIR=${KUBECONFIG_ROOT_DIR:-$PROJECT_ROOT/.kube}
 # shellcheck source=lib/utils.sh
 source "$PROJECT_ROOT/lib/utils.sh"
 
@@ -43,7 +44,7 @@ verify_bcc() {
 verify_cluster() {
 	# basic check for k8s cluster info
 	info "Verifying cluster status"
-
+	export KUBECONFIG="${KUBECONFIG_ROOT_DIR}/config"
 	run kubectl cluster-info || die "failed to get the cluster-info"
 
 	# check k8s system pod is there...

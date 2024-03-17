@@ -131,6 +131,7 @@ kind_up() {
 	kind_preinstall_check
 	_prepare_config
 	_setup_kind
+	export KUBECONFIG="$KIND_KUBECONFIG"
 	wait_for_cluster_ready
 	kind_wait_up
 	_run_kind_registry
