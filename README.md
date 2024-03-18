@@ -6,7 +6,6 @@
 This repo provides the scripts to create a local [kubernetes](kind/kind.sh)/[openshift](microshift/microshift.sh) cluster to be used for development or integration tests. It is also used in [Github action](https://github.com/sustainable-computing-io/kepler-action) for kepler.
 
 ## Prerequisites
-- Locate your BCC lib and linux header.
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installing-from-release-binaries)
 
@@ -44,12 +43,16 @@ CLUSTER_PROVIDER=microshift
 CLUSTER_NAME=microshift
 PROMETHEUS_ENABLE=false
 GRAFANA_ENABLE=false
+TEKTON_ENABLE=false
 ```
 
 Start the cluster by running
 ```sh
 ./main.sh up
 ```
+
+5. kubeconfig
+Following the hint on your terminal to find out the kubeconfig.
 
 ## Container registry
 There's a container registry available which is exposed at `localhost:5001`.
