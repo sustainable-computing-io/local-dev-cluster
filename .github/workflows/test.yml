@@ -80,6 +80,7 @@ jobs:
         export GRAFANA_ENABLE=${{matrix.GRAFANA_ENABLE}}
         export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
         export TEKTON_ENABLE=${{matrix.TEKTON_ENABLE}}
+        ./main.sh prerequisites
         ./main.sh up
     - name: verify
       run: |
