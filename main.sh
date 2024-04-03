@@ -52,6 +52,7 @@ declare -r REGISTRY_PORT=${REGISTRY_PORT:-5001}
 declare -r PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-false}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
 declare -r TEKTON_ENABLE=${TEKTON_ENABLE:-false}
+declare -r LIBBPF_VERSION=${LIBBPF_VERSION:-v1.2.0}
 
 source "$PROJECT_ROOT/lib/utils.sh"
 
@@ -122,6 +123,41 @@ print_config() {
 	EOF
 }
 
+linuxHeader() {
+	sudo apt-get install -y linux-headers-"$(uname -r)"
+	sudo apt-get install -y linux-modules-"$(uname -r)"
+	sudo apt-get install -y linux-modules-extra-"$(uname -r)"
+}
+
+ebpf() {
+	sudo apt-get install -y binutils-dev build-essential  pkg-config libelf-dev
+	mkdir -p temp-libbpf
+	cd temp-libbpf
+	git clone -b "$LIBBPF_VERSION" https://github.com/libbpf/libbpf
+	cd libbpf/src
+	sudo BUILD_STATIC_ONLY=y make install
+	sudo make install_uapi_headers
+	cd ../../..
+	sudo rm -rf temp-libbpf
+}
+
+containerruntime() {
+	# Add Docker's official GPG key:
+    sudo apt-get update -y
+    sudo apt-get install ca-certificates curl gnupg -y
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+    # Add the repository to Apt sources:
+    echo \
+              "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+              $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+              tee /etc/apt/sources.list.d/docker.list > /dev/null
+    apt-get update -y
+    apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+    docker info
+}
+
 main() {
 	# ensure that all relative file refs are relative to the project root
 	cd "$PROJECT_ROOT"
@@ -143,6 +179,15 @@ main() {
 	print_config
 
 	case "$1" in
+	prerequisites)
+		linuxHeader
+		ebpf
+		return $?
+		;;
+	containerruntime)
+		containerruntime
+		return $?
+		;;
 	up)
 		cluster_up
 		return $?
