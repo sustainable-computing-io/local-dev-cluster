@@ -61,6 +61,12 @@ verify_cluster() {
 	ok "Cluster is up and running"
 }
 
+containerruntime() {
+	which docker
+	# there is a docker in docker issue on GHA, use a or true logic as workaround
+	docker info || true
+}
+
 main() {
 	# verify the deployment of cluster
 	case $1 in
@@ -69,6 +75,9 @@ main() {
 		;;
 	cluster)
 		verify_cluster
+		;;
+	containerruntime)
+		containerruntime
 		;;
 	all | *)
 		verify_bcc
