@@ -5,15 +5,29 @@
 
 This repo provides the scripts to create a local [kubernetes](kind/kind.sh)/[openshift](microshift/microshift.sh) cluster to be used for development or integration tests. It is also used in [Github action](https://github.com/sustainable-computing-io/kepler-action) for kepler.
 
-## Prerequisites
+## Prerequisites for this REPO
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installing-from-release-binaries)
+- [Git](https://git-scm.com/)
 
 Please install the same version of `kubectl` and `kind` as Github-hosted runner.
 
 Currently Kepler project's Github Action only supports `Ubuntu` based runners.
 
 You can refer to tools list [here](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#tools)
+
+## Prerequisites (optional)
+```
+./main.sh prerequisites
+```
+Will setup ebpf on your host instance.
+
+## Container runtime (optional)
+```
+./main.sh containerruntime
+```
+Will setup container runtime on your host instance.
+
 ## Startup
 1. Modify kind [config](./kind/manifests/kind.yml) to make sure `extraMounts:` cover the linux header and BCC.
 2. Export `CLUSTER_PROVIDER` env variable:

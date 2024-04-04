@@ -53,6 +53,7 @@ declare -r PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-false}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
 declare -r TEKTON_ENABLE=${TEKTON_ENABLE:-false}
 declare -r LIBBPF_VERSION=${LIBBPF_VERSION:-v1.2.0}
+declare -r RESTARTCONTAINERRUNTIME=${RESTARTCONTAINERRUNTIME:-false}
 
 source "$PROJECT_ROOT/lib/utils.sh"
 
@@ -142,20 +143,36 @@ ebpf() {
 }
 
 containerruntime() {
-	# Add Docker's official GPG key:
-    sudo apt-get update -y
-    sudo apt-get install ca-certificates curl gnupg -y
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
-    # Add the repository to Apt sources:
-    echo \
-              "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-              $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-              tee /etc/apt/sources.list.d/docker.list > /dev/null
-    apt-get update -y
-    apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-    docker info
+	set -x
+	echo start install container runtime as docker
+	if [ -f /usr/bin/yum ]; then
+		echo install yum utils
+		yum install -y yum-utils
+		echo config yum repo
+		yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+		echo install docker
+		yum install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+	fi
+	if [ -f /usr/bin/apt-get ]; then
+		# Add Docker's official GPG key:
+		echo install docker with apt
+		sudo apt-get update -y
+		sudo apt-get install ca-certificates curl gnupg -y
+		install -m 0755 -d /etc/apt/keyrings
+		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+		chmod a+r /etc/apt/keyrings/docker.gpg
+		# Add the repository to Apt sources:
+		echo \
+				"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+				$(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+				tee /etc/apt/sources.list.d/docker.list > /dev/null
+		apt-get update -y
+		apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+	fi
+	set +x
+	if is_set "$RESTARTCONTAINERRUNTIME"; then
+		sudo systemctl start docker
+	fi
 }
 
 main() {
@@ -175,8 +192,6 @@ main() {
 
 	# shellcheck source=providers/kind/kind.sh
 	# shellcheck source=providers/microshift/microshift.sh
-	source "$cluster_lib"
-	print_config
 
 	case "$1" in
 	prerequisites)
@@ -189,21 +204,29 @@ main() {
 		return $?
 		;;
 	up)
+		source "$cluster_lib"
+		print_config
 		cluster_up
 		return $?
 		;;
 
 	down)
+		source "$cluster_lib"
+		print_config
 		cluster_down
 		return $?
 		;;
 	restart)
+		source "$cluster_lib"
+		print_config
 		cluster_down || true
 		cluster_up
 		return $?
 		;;
 	*)
 		echo "unknown command $1; bringing a cluster up"
+		source "$cluster_lib"
+		print_config
 		cluster_up
 		;;
 	esac
