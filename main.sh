@@ -52,6 +52,7 @@ declare -r REGISTRY_PORT=${REGISTRY_PORT:-5001}
 declare -r PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-false}
 declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
 declare -r TEKTON_ENABLE=${TEKTON_ENABLE:-false}
+declare -r KUBEVIRT_ENABLE=${KUBEVIRT_ENABLE:-false}
 declare -r LIBBPF_VERSION=${LIBBPF_VERSION:-v1.2.0}
 declare -r RESTARTCONTAINERRUNTIME=${RESTARTCONTAINERRUNTIME:-false}
 
@@ -85,6 +86,14 @@ cluster_up() {
 		rollout_ns_status tekton-pipelines
         rollout_ns_status tekton-pipelines-resolvers
 	fi
+
+	# install kubevirt per https://kubevirt.io/quickstart_kind/
+	if is_set "$KUBEVIRT_ENABLE"; then
+		KUBEVIRT_VERSION=$(curl -s https://storage.googleapis.com/kubevirt-prow/release/kubevirt/kubevirt/stable.txt)
+		kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/"${KUBEVIRT_VERSION}"/kubevirt-operator.yaml
+		kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/"${KUBEVIRT_VERSION}"/kubevirt-cr.yaml
+		rollout_ns_status kubevirt
+	fi
 }
 
 cluster_down() {
@@ -117,6 +126,9 @@ print_config() {
 
 		Tekton
 		  * Install Tekton : $TEKTON_ENABLE
+
+		KubeVirt
+		  * Install KubeVirt : $KUBEVIRT_ENABLE
 
 		$cluster_config
 		━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
