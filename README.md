@@ -58,6 +58,7 @@ CLUSTER_NAME=microshift
 PROMETHEUS_ENABLE=false
 GRAFANA_ENABLE=false
 TEKTON_ENABLE=false
+KUBEVIRT_ENABLE=false
 ```
 
 Start the cluster by running
