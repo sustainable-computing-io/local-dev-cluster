@@ -137,21 +137,55 @@ print_config() {
 }
 
 linuxHeader() {
-	sudo apt-get install -y linux-headers-"$(uname -r)"
-	sudo apt-get install -y linux-modules-"$(uname -r)"
-	sudo apt-get install -y linux-modules-extra-"$(uname -r)"
+	if [ -f /usr/bin/apt-get ]; then
+		sudo apt-get install -y linux-headers-"$(uname -r)"
+		sudo apt-get install -y linux-modules-"$(uname -r)"
+		sudo apt-get install -y linux-modules-extra-"$(uname -r)"
+	fi
+	if [ -f /usr/bin/yum ]; then
+		echo "do nothing for yum with linux header?"
+	fi
 }
 
 ebpf() {
-	sudo apt-get install -y binutils-dev build-essential  pkg-config libelf-dev
-	mkdir -p temp-libbpf
-	cd temp-libbpf
-	git clone -b "$LIBBPF_VERSION" https://github.com/libbpf/libbpf
-	cd libbpf/src
-	sudo BUILD_STATIC_ONLY=y make install
-	sudo make install_uapi_headers
-	cd ../../..
-	sudo rm -rf temp-libbpf
+	if [ -f /usr/bin/apt-get ]; then
+		sudo apt-get install -y binutils-dev build-essential  pkg-config libelf-dev
+		mkdir -p temp-libbpf
+		cd temp-libbpf
+		git clone -b "$LIBBPF_VERSION" https://github.com/libbpf/libbpf
+		cd libbpf/src
+		sudo BUILD_STATIC_ONLY=y make install
+		sudo make install_uapi_headers
+		cd ../../..
+		sudo rm -rf temp-libbpf
+	fi
+	if [ -f /usr/bin/yum ]; then
+		export workdir=$PWD
+		yum -y install yum-utils cpio bzip2 clang llvm-devel zlib-devel libcurl-devel m4 xz
+		yum-config-manager --enable ubi-9-baseos-source
+		mkdir -p /tmp/elfutils-source
+		cd /tmp/elfutils-source
+		yumdownloader --source elfutils
+		rpm2cpio elfutils-0.189-3.el9.src.rpm | cpio -iv
+		ls -al
+		tar xjvf elfutils-0.189.tar.bz2
+		cd /tmp/elfutils-source/elfutils-0.189
+		./configure --disable-debuginfod
+		make install
+		
+		mkdir -p /tmp/libbpf-source
+		cd /tmp/libbpf-source
+		yumdownloader --source libbpf
+		rpm2cpio libbpf-1.2.0-1.el9.src.rpm | cpio -iv
+		tar xf ./linux-*el9.tar.xz
+		cd /tmp/libbpf-source/linux-5.14.0-333.el9/tools/lib/bpf
+		make install_headers
+		prefix=/usr BUILD_STATIC_ONLY=y make install
+		cd /tmp/libbpf-source/linux-5.14.0-333.el9/tools/bpf
+		make bpftool
+
+		cd "$workdir"
+	fi
 }
 
 containerruntime() {
