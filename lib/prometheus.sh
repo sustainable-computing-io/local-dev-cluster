@@ -22,10 +22,12 @@ declare -r PROMETHEUS_OPERATOR_VERSION=${PROMETHEUS_OPERATOR_VERSION:-v0.11.0}
 declare -r PROMETHEUS_REPLICAS=${PROMETHEUS_REPLICAS:-1}
 
 # constants
-
-# constants
 declare -r KUBE_PROM_DIR="$PROJECT_ROOT/tmp/kube-prometheus"
 declare -r MONITORING_NS="monitoring"
+declare -r DASHBOARD_DIR="$KUBE_PROM_DIR/grafana-dashboards"
+declare KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON
+
+KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON=$( curl -fsSL https://raw.githubusercontent.com/sustainable-computing-io/kepler/main/grafana-dashboards/Kepler-Exporter.json | sed '1 ! s/^/         /' )
 
 deploy_prometheus_operator() {
 
@@ -42,6 +44,8 @@ deploy_prometheus_operator() {
 		mv kube-prometheus/manifests/prometheus-prometheus.yaml.tmp \
 			kube-prometheus/manifests/prometheus-prometheus.yaml
 
+		_setup_dashboard
+		_run_yq
 		_load_prometheus_operator_images_to_local_registry
 		kubectl create -f kube-prometheus/manifests/setup
 		kubectl wait \
@@ -58,8 +62,10 @@ deploy_prometheus_operator() {
 		is_set "$GRAFANA_ENABLE" && {
 			find kube-prometheus/manifests -name 'grafana-*.yaml' -type f \
 				-exec kubectl create -f {} \;
+			ok "Grafana deployed"
 		}
 
+		ok "Prometheus deployed"
 		rm -rf kube-prometheus
 	)
 	wait_for_pods_in_namespace "$MONITORING_NS"
@@ -84,6 +90,7 @@ _load_prometheus_operator_images_to_local_registry() {
 	# TODO: fix this by passing in the registry information to deploy_prometheus_operator
 	# from main
 
+	header "Load prometheus operator images to local registry"
 	local registry
 	if [[ "$CLUSTER_PROVIDER" == "kind" ]]; then
 		registry="localhost:${REGISTRY_PORT}"
@@ -105,4 +112,36 @@ _load_prometheus_operator_images_to_local_registry() {
 			mv "${file}.tmp" "${file}"
 		done
 	done
+}
+
+_setup_dashboard(){
+	if [ -f "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" ]; then
+		return 0
+	else
+	header "Setup Dashboard"
+	mkdir -p "$DASHBOARD_DIR/grafana-dashboards/"
+	cat - > "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" << EOF
+apiVersion: v1
+data:
+    kepler-exporter.json: |-
+        $KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON
+kind: ConfigMap
+metadata:
+    labels:
+        app.kubernetes.io/component: grafana
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/part-of: kube-prometheus
+        app.kubernetes.io/version: 9.5.3
+    name: grafana-dashboard-kepler-exporter
+    namespace: monitoring
+EOF
+    fi
+}
+
+_run_yq(){
+	f="$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" \
+	yq -i e '.items += [load(env(f))]' "$KUBE_PROM_DIR"/manifests/grafana-dashboardDefinitions.yaml;
+	yq -i e '.spec.template.spec.containers.0.volumeMounts += [ {"mountPath": "/grafana-dashboard-definitions/0/kepler-exporter", "name": "grafana-dashboard-kepler-exporter", "readOnly": false} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml
+	yq -i e '.spec.template.spec.volumes += [ {"configMap": {"name": "grafana-dashboard-kepler-exporter"}, "name": "grafana-dashboard-kepler-exporter"} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml;
+	ok "Dashboard setup complete"
 }
