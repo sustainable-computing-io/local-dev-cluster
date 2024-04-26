@@ -45,7 +45,7 @@ declare -r PROJECT_ROOT CALLER_PROJECT_ROOT
 declare -r CTR_CMD=${CTR_CMD:-docker}
 declare -r CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-kind}
 declare -r KUBECONFIG_ROOT_DIR=${KUBECONFIG_ROOT_DIR:-$PROJECT_ROOT/.kube}
-declare -r KEPLER_KUBECONFIG=${KEPLER_KUBECONFIG:-config-kepler}
+declare -r KEPLER_KUBECONFIG=${KEPLER_KUBECONFIG:-config}
 
 declare -r REGISTRY_PORT=${REGISTRY_PORT:-5001}
 
@@ -61,7 +61,7 @@ source "$PROJECT_ROOT/lib/utils.sh"
 cluster_up() {
 	"${CLUSTER_PROVIDER}_up"
 
-	info "Coping $CLUSTER_PROVIDER kubeconfig to $KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
+	info "Copying $CLUSTER_PROVIDER kubeconfig to $KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
 	local kubeconfig
 	kubeconfig="$("${CLUSTER_PROVIDER}"_kubeconfig)"
 
@@ -74,7 +74,7 @@ cluster_up() {
 	KUBECONFIG=$kubeconfig kubectl config view --merge --flatten >all-in-one-kubeconfig.yaml
 	mv -f all-in-one-kubeconfig.yaml "${KUBECONFIG_ROOT_DIR}/config"
 
-	export KUBECONFIG="${KUBECONFIG_ROOT_DIR}/config"
+	export KUBECONFIG="${KUBECONFIG_ROOT_DIR}/$KEPLER_KUBECONFIG"
 
 	if is_set "$PROMETHEUS_ENABLE" || is_set "$GRAFANA_ENABLE"; then
 		source "$PROJECT_ROOT/lib/prometheus.sh"
