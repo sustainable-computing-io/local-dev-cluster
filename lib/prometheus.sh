@@ -117,7 +117,7 @@ _setup_dashboard(){
 	if [ -f "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" ]; then
 		return 0
 	else
-	header "Setup Dashboard"
+	header "Setup Dashboard base on $DASHBOARD_DIR"
 	mkdir -p "$DASHBOARD_DIR/grafana-dashboards/"
 	cat - > "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" << EOF
 apiVersion: v1
