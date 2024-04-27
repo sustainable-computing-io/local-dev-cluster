@@ -45,7 +45,6 @@ deploy_prometheus_operator() {
 			kube-prometheus/manifests/prometheus-prometheus.yaml
 
 		_setup_dashboard
-		_run_yq
 		_load_prometheus_operator_images_to_local_registry
 		kubectl create -f kube-prometheus/manifests/setup
 		kubectl wait \
@@ -136,12 +135,4 @@ metadata:
     namespace: monitoring
 EOF
     fi
-}
-
-_run_yq(){
-	f="$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" \
-	yq -i e '.items += [load(env(f))]' "$KUBE_PROM_DIR"/manifests/grafana-dashboardDefinitions.yaml;
-	yq -i e '.spec.template.spec.containers.0.volumeMounts += [ {"mountPath": "/grafana-dashboard-definitions/0/kepler-exporter", "name": "grafana-dashboard-kepler-exporter", "readOnly": false} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml
-	yq -i e '.spec.template.spec.volumes += [ {"configMap": {"name": "grafana-dashboard-kepler-exporter"}, "name": "grafana-dashboard-kepler-exporter"} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml;
-	ok "Dashboard setup complete"
 }

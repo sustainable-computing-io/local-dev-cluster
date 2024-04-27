@@ -4,6 +4,8 @@ on:
   # we can run mannually to see if it can be fixed by update version of
   # - kubectl
   # - k8s cluster provider's 
+  schedule:
+    - cron: "27 4 * * *"
   workflow_dispatch:
   pull_request:
   push:
