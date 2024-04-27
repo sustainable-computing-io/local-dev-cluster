@@ -44,7 +44,6 @@ deploy_prometheus_operator() {
 		mv kube-prometheus/manifests/prometheus-prometheus.yaml.tmp \
 			kube-prometheus/manifests/prometheus-prometheus.yaml
 
-		_setup_dashboard
 		_load_prometheus_operator_images_to_local_registry
 		kubectl create -f kube-prometheus/manifests/setup
 		kubectl wait \
@@ -61,6 +60,7 @@ deploy_prometheus_operator() {
 		is_set "$GRAFANA_ENABLE" && {
 			find kube-prometheus/manifests -name 'grafana-*.yaml' -type f \
 				-exec kubectl create -f {} \;
+			_setup_dashboard
 			ok "Grafana deployed"
 		}
 
