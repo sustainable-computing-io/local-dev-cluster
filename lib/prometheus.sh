@@ -117,6 +117,7 @@ _setup_dashboard(){
 	if [ -f "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" ]; then
 		return 0
 	else
+	f="$KUBE_PROM_DIR/manifests/grafana-dashboardDefinitions.yaml" 
 	header "Setup Dashboard base on $DASHBOARD_DIR"
 	mkdir -p "$DASHBOARD_DIR/grafana-dashboards/"
 	cat - > "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" << EOF
