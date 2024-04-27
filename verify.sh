@@ -21,6 +21,8 @@ set -eu -o pipefail
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 declare -r PROJECT_ROOT
 declare -r KUBECONFIG_ROOT_DIR=${KUBECONFIG_ROOT_DIR:-$PROJECT_ROOT/.kube}
+declare -r KUBE_PROM_DIR="$PROJECT_ROOT/tmp/kube-prometheus"
+declare -r DASHBOARD_DIR="$KUBE_PROM_DIR/grafana-dashboards"
 # shellcheck source=lib/utils.sh
 source "$PROJECT_ROOT/lib/utils.sh"
 
@@ -58,6 +60,20 @@ verify_cluster() {
 		rollout_status "$res" "$NAMESPACE"
 	done
 
+	# verify kubeconf for ec2_hosted_runner usage
+	info "Verifying cluster status for CI usage"
+	cp .kube/config /tmp/kubeconfig
+	export KUBECONFIG="/tmp/kubeconfig"
+	run kubectl cluster-info || die "failed to get the cluster-info"
+
+	# check k8s system pod is there...
+	[[ $(kubectl get pods --all-namespaces | wc -l) == 0 ]] &&
+		die "it seems k8s cluster is not started"
+	
+	is_set "$GRAFANA_ENABLE" && {
+		run_yq
+	}
+	
 	ok "Cluster is up and running"
 }
 
@@ -65,6 +81,18 @@ containerruntime() {
 	which docker
 	# there is a docker in docker issue on GHA, use a or true logic as workaround
 	docker info || true
+}
+
+
+run_yq(){
+	if [ -f "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" ]; then
+		return 0
+	fi
+	f="$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" \
+	yq -i e '.items += [load(env(f))]' "$KUBE_PROM_DIR"/manifests/grafana-dashboardDefinitions.yaml;
+	yq -i e '.spec.template.spec.containers.0.volumeMounts += [ {"mountPath": "/grafana-dashboard-definitions/0/kepler-exporter", "name": "grafana-dashboard-kepler-exporter", "readOnly": false} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml
+	yq -i e '.spec.template.spec.volumes += [ {"configMap": {"name": "grafana-dashboard-kepler-exporter"}, "name": "grafana-dashboard-kepler-exporter"} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml;
+	ok "Dashboard setup complete"
 }
 
 main() {

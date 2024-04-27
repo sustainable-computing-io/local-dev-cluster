@@ -123,6 +123,7 @@ print_config() {
 		Monitoring
 		  * Install Prometheus : $prom_install_msg
 		  * Install Grafana    : $GRAFANA_ENABLE
+		if Grafana been enabled, the kepler dashboard will be installed.
 
 		Tekton
 		  * Install Tekton : $TEKTON_ENABLE

@@ -4,6 +4,8 @@ on:
   # we can run mannually to see if it can be fixed by update version of
   # - kubectl
   # - k8s cluster provider's 
+  schedule:
+    - cron: "27 4 * * *"
   workflow_dispatch:
   pull_request:
   push:
@@ -36,41 +38,43 @@ jobs:
           PROMETHEUS_ENABLE: false
           GRAFANA_ENABLE: false
           TEKTON_ENABLE: false
+          KUBEVIRT_ENABLE: false
         - cluster_provider: kind
           prometheus_operator_version: v0.12.0
           PROMETHEUS_ENABLE: true
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: false
+          KUBEVIRT_ENABLE: false
         - cluster_provider: kind
           prometheus_operator_version: v0.12.0
           PROMETHEUS_ENABLE: false
           GRAFANA_ENABLE: false
           TEKTON_ENABLE: true
+          KUBEVIRT_ENABLE: false
         - cluster_provider: kind
           prometheus_operator_version: v0.12.0
           PROMETHEUS_ENABLE: true
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: true
+          KUBEVIRT_ENABLE: false
+        - cluster_provider: kind
+          prometheus_operator_version: v0.12.0
+          PROMETHEUS_ENABLE: true
+          GRAFANA_ENABLE: true
+          TEKTON_ENABLE: true
+          KUBEVIRT_ENABLE: true
         - cluster_provider: microshift
           prometheus_operator_version: v0.12.0
           PROMETHEUS_ENABLE: false
           GRAFANA_ENABLE: false
           TEKTON_ENABLE: false
+          KUBEVIRT_ENABLE: false
         - cluster_provider: microshift
           prometheus_operator_version: v0.12.0
           PROMETHEUS_ENABLE: true
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: false
-        #- cluster_provider: microshift
-        #  prometheus_operator_version: v0.12.0
-        #  PROMETHEUS_ENABLE: false
-        #  GRAFANA_ENABLE: false
-        #  TEKTON_ENABLE: true
-        #- cluster_provider: microshift
-        #  prometheus_operator_version: v0.12.0
-        #  PROMETHEUS_ENABLE: true
-        #  GRAFANA_ENABLE: true
-        #  TEKTON_ENABLE: true        
+          KUBEVIRT_ENABLE: false     
     steps:
     - uses: actions/checkout@v3
     - name: start from local
@@ -80,11 +84,13 @@ jobs:
         export GRAFANA_ENABLE=${{matrix.GRAFANA_ENABLE}}
         export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
         export TEKTON_ENABLE=${{matrix.TEKTON_ENABLE}}
+        export KUBEVIRT_ENABLE=${{matrix.KUBEVIRT_ENABLE}}
         ./main.sh prerequisites
         ./main.sh up
     - name: verify
       run: |
         export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
+        export GRAFANA_ENABLE=${{matrix.GRAFANA_ENABLE}}
         ./verify.sh
 
   containertestubuntu:
