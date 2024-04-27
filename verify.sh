@@ -69,8 +69,11 @@ verify_cluster() {
 	# check k8s system pod is there...
 	[[ $(kubectl get pods --all-namespaces | wc -l) == 0 ]] &&
 		die "it seems k8s cluster is not started"
-
-	run_yq
+	
+	is_set "$GRAFANA_ENABLE" && {
+		run_yq
+	}
+	
 	ok "Cluster is up and running"
 }
 
