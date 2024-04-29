@@ -44,8 +44,6 @@ deploy_prometheus_operator() {
 		mv kube-prometheus/manifests/prometheus-prometheus.yaml.tmp \
 			kube-prometheus/manifests/prometheus-prometheus.yaml
 
-		_setup_dashboard
-		_run_yq
 		_load_prometheus_operator_images_to_local_registry
 		kubectl create -f kube-prometheus/manifests/setup
 		kubectl wait \
@@ -60,9 +58,12 @@ deploy_prometheus_operator() {
 			-exec kubectl create -f {} \;
 
 		is_set "$GRAFANA_ENABLE" && {
-			find kube-prometheus/manifests -name 'grafana-*.yaml' -type f \
-				-exec kubectl create -f {} \;
-			ok "Grafana deployed"
+			# Double check yq is available
+			command -v yq >/dev/null 2>&1 && {
+				_setup_dashboard_configmap
+				_add_dashboard_to_grafana
+			}
+			_deploy_grafana
 		}
 
 		ok "Prometheus deployed"
@@ -114,11 +115,11 @@ _load_prometheus_operator_images_to_local_registry() {
 	done
 }
 
-_setup_dashboard(){
+_setup_dashboard_configmap(){
 	if [ -f "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" ]; then
 		return 0
 	else
-	header "Setup Dashboard"
+	header "Create Dashboard Configmap"
 	mkdir -p "$DASHBOARD_DIR/grafana-dashboards/"
 	cat - > "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" << EOF
 apiVersion: v1
@@ -136,12 +137,21 @@ metadata:
     namespace: monitoring
 EOF
     fi
+    ok "Create Dashboard Configmap"
 }
 
-_run_yq(){
+_add_dashboard_to_grafana() {
+    header "Edit Kepler Grafana Dashboard "
 	f="$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" \
 	yq -i e '.items += [load(env(f))]' "$KUBE_PROM_DIR"/manifests/grafana-dashboardDefinitions.yaml;
 	yq -i e '.spec.template.spec.containers.0.volumeMounts += [ {"mountPath": "/grafana-dashboard-definitions/0/kepler-exporter", "name": "grafana-dashboard-kepler-exporter", "readOnly": false} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml
 	yq -i e '.spec.template.spec.volumes += [ {"configMap": {"name": "grafana-dashboard-kepler-exporter"}, "name": "grafana-dashboard-kepler-exporter"} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml;
 	ok "Dashboard setup complete"
+}
+
+_deploy_grafana() {
+	header "Deploy Grafana"
+	find kube-prometheus/manifests -name 'grafana-*.yaml' -type f \
+				-exec kubectl create -f {} \;
+	ok "Grafana deployed"
 }

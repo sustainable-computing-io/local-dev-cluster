@@ -172,7 +172,6 @@ ebpf() {
 		cd /tmp/elfutils-source/elfutils-0.189
 		./configure --disable-debuginfod
 		make install
-		
 		mkdir -p /tmp/libbpf-source
 		cd /tmp/libbpf-source
 		yumdownloader --source libbpf
@@ -185,6 +184,37 @@ ebpf() {
 		make bpftool
 
 		cd "$workdir"
+	fi
+}
+
+yq_install() {
+	# Will only install yq if GRAFANA_ENABLE option is set to true
+	if is_set "$GRAFANA_ENABLE"; then
+		command -v yq >/dev/null 2>&1 && {
+			ok "yq is already installed"
+			return 0
+		}
+
+		YQ="/usr/bin/yq"
+		YQ_VERSION=${YQ_VERSION:-v4.34.2}
+		ARCH="$(uname -m)"
+		YQ_ARCH="amd64" # set a reasonable default
+		if [[ -n "${ARCH}" ]]; then
+			case "${ARCH}" in
+				x86_64) YQ_ARCH=amd64;;
+				aarch64) YQ_ARCH=arm64;;
+			esac
+		fi
+		YQ_INSTALL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}"
+
+		info "installing yq version: $YQ_VERSION and arch: $YQ_ARCH"
+		wget "${YQ_INSTALL}" -O "${YQ}" || {
+			fail "failed to install yq"
+			rm -rf "${YQ}" # cleanup in case of fail
+			return 1
+		}
+		chmod +x "${YQ}"
+		ok "yq was installed successfully"
 	fi
 }
 
@@ -243,6 +273,7 @@ main() {
 	prerequisites)
 		linuxHeader
 		ebpf
+		yq_install
 		return $?
 		;;
 	containerruntime)
