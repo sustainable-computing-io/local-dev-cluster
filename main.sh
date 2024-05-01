@@ -166,10 +166,10 @@ ebpf() {
 		mkdir -p /tmp/elfutils-source
 		cd /tmp/elfutils-source
 		yumdownloader --source elfutils
-		rpm2cpio elfutils-0.189-3.el9.src.rpm | cpio -iv
+		rpm2cpio elfutils-0.190-2.el9.src.rpm | cpio -iv
 		ls -al
-		tar xjvf elfutils-0.189.tar.bz2
-		cd /tmp/elfutils-source/elfutils-0.189
+		tar xjvf elfutils-0.190.tar.bz2
+		cd /tmp/elfutils-source/elfutils-0.190
 		./configure --disable-debuginfod
 		make install
 		mkdir -p /tmp/libbpf-source
