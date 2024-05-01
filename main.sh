@@ -122,7 +122,7 @@ print_config() {
 
 		Monitoring
 		  * Install Prometheus : $prom_install_msg
-		  * Install Grafana    : $GRAFANA_ENABLE
+		  * Install Grafana + Kepler dashboard   : $GRAFANA_ENABLE
 
 		Tekton
 		  * Install Tekton : $TEKTON_ENABLE
