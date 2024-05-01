@@ -122,7 +122,7 @@ print_config() {
 
 		Monitoring
 		  * Install Prometheus : $prom_install_msg
-		  * Install Grafana    : $GRAFANA_ENABLE
+		  * Install Grafana + Kepler dashboard   : $GRAFANA_ENABLE
 
 		Tekton
 		  * Install Tekton : $TEKTON_ENABLE
@@ -166,21 +166,21 @@ ebpf() {
 		mkdir -p /tmp/elfutils-source
 		cd /tmp/elfutils-source
 		yumdownloader --source elfutils
-		rpm2cpio elfutils-0.189-3.el9.src.rpm | cpio -iv
+		rpm2cpio elfutils-0.190-2.el9.src.rpm | cpio -iv
 		ls -al
-		tar xjvf elfutils-0.189.tar.bz2
-		cd /tmp/elfutils-source/elfutils-0.189
+		tar xjvf elfutils-0.190.tar.bz2
+		cd /tmp/elfutils-source/elfutils-0.190
 		./configure --disable-debuginfod
 		make install
 		mkdir -p /tmp/libbpf-source
 		cd /tmp/libbpf-source
 		yumdownloader --source libbpf
-		rpm2cpio libbpf-1.2.0-1.el9.src.rpm | cpio -iv
+		rpm2cpio libbpf-1.3.0-2.el9.src.rpm | cpio -iv
 		tar xf ./linux-*el9.tar.xz
-		cd /tmp/libbpf-source/linux-5.14.0-333.el9/tools/lib/bpf
+		cd /tmp/libbpf-source/linux-5.14.0-424.el9/tools/lib/bpf
 		make install_headers
 		prefix=/usr BUILD_STATIC_ONLY=y make install
-		cd /tmp/libbpf-source/linux-5.14.0-333.el9/tools/bpf
+		cd /tmp/libbpf-source/linux-5.14.0-424.el9/tools/bpf
 		make bpftool
 
 		cd "$workdir"
