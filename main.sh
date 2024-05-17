@@ -98,7 +98,7 @@ cluster_up() {
 
 cluster_down() {
 	"$CLUSTER_PROVIDER"_down
-	rm "$KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
+	rm -r "$KUBECONFIG_ROOT_DIR"
 }
 
 print_config() {
