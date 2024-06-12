@@ -55,19 +55,11 @@ declare -r TEKTON_ENABLE=${TEKTON_ENABLE:-false}
 declare -r KUBEVIRT_ENABLE=${KUBEVIRT_ENABLE:-false}
 declare -r LIBBPF_VERSION=${LIBBPF_VERSION:-v1.2.0}
 declare -r RESTARTCONTAINERRUNTIME=${RESTARTCONTAINERRUNTIME:-false}
+declare -r REDHAT_SUB=${REDHAT_SUB:-false}
 
 source "$PROJECT_ROOT/lib/utils.sh"
 
-cluster_up() {
-	"${CLUSTER_PROVIDER}_up"
-
-	info "Copying $CLUSTER_PROVIDER kubeconfig to $KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
-	local kubeconfig
-	kubeconfig="$("${CLUSTER_PROVIDER}"_kubeconfig)"
-
-	mkdir -p "$(basename "$KUBECONFIG_ROOT_DIR")"
-	mv -f "$kubeconfig" "${KUBECONFIG_ROOT_DIR}/${KEPLER_KUBECONFIG}"
-
+config_cluster() {
 	kubeconfig="$KUBECONFIG_ROOT_DIR/config":$(find "$KUBECONFIG_ROOT_DIR" \
 		-type f -name "*config*" | tr '\n' ':')
 	kubeconfig=${kubeconfig%:}
@@ -96,6 +88,19 @@ cluster_up() {
 	fi
 }
 
+cluster_up() {
+	"${CLUSTER_PROVIDER}_up"
+	
+	info "Copying $CLUSTER_PROVIDER kubeconfig to $KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
+	local kubeconfig
+	kubeconfig="$("${CLUSTER_PROVIDER}"_kubeconfig)"
+
+	mkdir -p "$(basename "$KUBECONFIG_ROOT_DIR")"
+	mv -f "$kubeconfig" "${KUBECONFIG_ROOT_DIR}/${KEPLER_KUBECONFIG}"
+
+	config_cluster
+}
+
 cluster_down() {
 	"$CLUSTER_PROVIDER"_down
 	rm "$KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
@@ -122,7 +127,8 @@ print_config() {
 
 		Monitoring
 		  * Install Prometheus : $prom_install_msg
-		  * Install Grafana + Kepler dashboard   : $GRAFANA_ENABLE
+		  * Install Grafana    : $GRAFANA_ENABLE
+		if Grafana been enabled, the kepler dashboard will be installed.
 
 		Tekton
 		  * Install Tekton : $TEKTON_ENABLE
@@ -160,61 +166,33 @@ ebpf() {
 		sudo rm -rf temp-libbpf
 	fi
 	if [ -f /usr/bin/yum ]; then
-		export workdir=$PWD
-		yum -y install yum-utils cpio bzip2 clang llvm-devel zlib-devel libcurl-devel m4 xz
-		yum-config-manager --enable ubi-9-baseos-source
-		mkdir -p /tmp/elfutils-source
-		cd /tmp/elfutils-source
-		yumdownloader --source elfutils
-		rpm2cpio elfutils-0.190-2.el9.src.rpm | cpio -iv
-		ls -al
-		tar xjvf elfutils-0.190.tar.bz2
-		cd /tmp/elfutils-source/elfutils-0.190
-		./configure --disable-debuginfod
-		make install
-		mkdir -p /tmp/libbpf-source
-		cd /tmp/libbpf-source
-		yumdownloader --source libbpf
-		rpm2cpio libbpf-1.3.0-2.el9.src.rpm | cpio -iv
-		tar xf ./linux-*el9.tar.xz
-		cd /tmp/libbpf-source/linux-5.14.0-424.el9/tools/lib/bpf
-		make install_headers
-		prefix=/usr BUILD_STATIC_ONLY=y make install
-		cd /tmp/libbpf-source/linux-5.14.0-424.el9/tools/bpf
-		make bpftool
+		if is_set "$REDHAT_SUB"; then
+			export workdir=$PWD
+			yum -y install yum-utils cpio bzip2 clang llvm-devel zlib-devel libcurl-devel m4 xz
+			yum-config-manager --enable ubi-9-baseos-source
+			mkdir -p /tmp/elfutils-source
+			cd /tmp/elfutils-source
+			yumdownloader --source elfutils
+			rpm2cpio elfutils-0.189-3.el9.src.rpm | cpio -iv
+			ls -al
+			tar xjvf elfutils-0.189.tar.bz2
+			cd /tmp/elfutils-source/elfutils-0.189
+			./configure --disable-debuginfod
+			make install
+			
+			mkdir -p /tmp/libbpf-source
+			cd /tmp/libbpf-source
+			yumdownloader --source libbpf
+			rpm2cpio libbpf-1.2.0-1.el9.src.rpm | cpio -iv
+			tar xf ./linux-*el9.tar.xz
+			cd /tmp/libbpf-source/linux-5.14.0-333.el9/tools/lib/bpf
+			make install_headers
+			prefix=/usr BUILD_STATIC_ONLY=y make install
+			cd /tmp/libbpf-source/linux-5.14.0-333.el9/tools/bpf
+			make bpftool
 
-		cd "$workdir"
-	fi
-}
-
-yq_install() {
-	# Will only install yq if GRAFANA_ENABLE option is set to true
-	if is_set "$GRAFANA_ENABLE"; then
-		command -v yq >/dev/null 2>&1 && {
-			ok "yq is already installed"
-			return 0
-		}
-
-		YQ="/usr/bin/yq"
-		YQ_VERSION=${YQ_VERSION:-v4.34.2}
-		ARCH="$(uname -m)"
-		YQ_ARCH="amd64" # set a reasonable default
-		if [[ -n "${ARCH}" ]]; then
-			case "${ARCH}" in
-				x86_64) YQ_ARCH=amd64;;
-				aarch64) YQ_ARCH=arm64;;
-			esac
+			cd "$workdir"
 		fi
-		YQ_INSTALL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}"
-
-		info "installing yq version: $YQ_VERSION and arch: $YQ_ARCH"
-		wget "${YQ_INSTALL}" -O "${YQ}" || {
-			fail "failed to install yq"
-			rm -rf "${YQ}" # cleanup in case of fail
-			return 1
-		}
-		chmod +x "${YQ}"
-		ok "yq was installed successfully"
 	fi
 }
 
@@ -273,7 +251,6 @@ main() {
 	prerequisites)
 		linuxHeader
 		ebpf
-		yq_install
 		return $?
 		;;
 	containerruntime)
@@ -286,7 +263,11 @@ main() {
 		cluster_up
 		return $?
 		;;
-
+	config)
+		source "$cluster_lib"
+		config_cluster
+		return $?
+		;;
 	down)
 		source "$cluster_lib"
 		print_config
