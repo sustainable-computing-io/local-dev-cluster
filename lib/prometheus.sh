@@ -20,6 +20,7 @@
 # configuration
 declare -r PROMETHEUS_OPERATOR_VERSION=${PROMETHEUS_OPERATOR_VERSION:-v0.11.0}
 declare -r PROMETHEUS_REPLICAS=${PROMETHEUS_REPLICAS:-1}
+declare -r LOADPROMETHEUSIMAGE=${LOADPROMETHEUSIMAGE:-true}
 
 # constants
 declare -r KUBE_PROM_DIR="$PROJECT_ROOT/tmp/kube-prometheus"
@@ -44,7 +45,9 @@ deploy_prometheus_operator() {
 		mv kube-prometheus/manifests/prometheus-prometheus.yaml.tmp \
 			kube-prometheus/manifests/prometheus-prometheus.yaml
 
-		_load_prometheus_operator_images_to_local_registry
+		if is_set "$LOADPROMETHEUSIMAGE"; then
+			_load_prometheus_operator_images_to_local_registry
+		fi
 		kubectl create -f kube-prometheus/manifests/setup
 		kubectl wait \
 			--for condition=Established \

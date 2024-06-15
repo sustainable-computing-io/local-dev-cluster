@@ -33,44 +33,22 @@ jobs:
         include:
         - cluster_provider: kind
           prometheus_operator_version: v0.12.0
-          PROMETHEUS_ENABLE: false
-          GRAFANA_ENABLE: false
-          TEKTON_ENABLE: false
-        - cluster_provider: kind
-          prometheus_operator_version: v0.12.0
-          PROMETHEUS_ENABLE: true
-          GRAFANA_ENABLE: true
-          TEKTON_ENABLE: false
-        - cluster_provider: kind
-          prometheus_operator_version: v0.12.0
-          PROMETHEUS_ENABLE: false
-          GRAFANA_ENABLE: false
-          TEKTON_ENABLE: true
-        - cluster_provider: kind
-          prometheus_operator_version: v0.12.0
           PROMETHEUS_ENABLE: true
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: true
+          LOADPROMETHEUSIMAGE: true
         - cluster_provider: microshift
           prometheus_operator_version: v0.12.0
           PROMETHEUS_ENABLE: false
           GRAFANA_ENABLE: false
           TEKTON_ENABLE: false
+          LOADPROMETHEUSIMAGE: true
         - cluster_provider: microshift
           prometheus_operator_version: v0.12.0
           PROMETHEUS_ENABLE: true
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: false
-        #- cluster_provider: microshift
-        #  prometheus_operator_version: v0.12.0
-        #  PROMETHEUS_ENABLE: false
-        #  GRAFANA_ENABLE: false
-        #  TEKTON_ENABLE: true
-        #- cluster_provider: microshift
-        #  prometheus_operator_version: v0.12.0
-        #  PROMETHEUS_ENABLE: true
-        #  GRAFANA_ENABLE: true
-        #  TEKTON_ENABLE: true        
+          LOADPROMETHEUSIMAGE: true     
     steps:
     - uses: actions/checkout@v3
     - name: start from local
@@ -80,12 +58,40 @@ jobs:
         export GRAFANA_ENABLE=${{matrix.GRAFANA_ENABLE}}
         export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
         export TEKTON_ENABLE=${{matrix.TEKTON_ENABLE}}
-        ./main.sh prerequisites
+        export LOADPROMETHEUSIMAGE=${{matrix.LOADPROMETHEUSIMAGE}}
         ./main.sh up
     - name: verify
       run: |
         export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
         ./verify.sh
+
+  # test local cluster without prometheus grafana
+  test_precreated_cluster:
+    needs:
+      - shellcheck
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: start a cluster from local
+      run: |
+        export PROMETHEUS_ENABLE=false
+        export TEKTON_ENABLE=false
+        export LOADPROMETHEUSIMAGE=false
+        export CLUSTER_CONFIG=false
+        ./main.sh up
+        mkdir -p /tmp/kubeconfig
+        cp .kube/config /tmp/kubeconfig
+        ls /tmp/kubeconfig
+    - name: config a cluster
+      run: |
+        export PROMETHEUS_ENABLE=true
+        export TEKTON_ENABLE=true
+        export LOADPROMETHEUSIMAGE=false
+        export KUBECONFIG_ROOT_DIR=/tmp/kubeconfig
+        ./main.sh config
+    - name: verify cluster
+      run: |
+        ./verify.sh verify_cluster
 
   containertestubuntu:
     needs:
