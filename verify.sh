@@ -80,7 +80,6 @@ main() {
 		containerruntime
 		;;
 	all | *)
-		verify_bcc
 		verify_cluster
 		;;
 	esac

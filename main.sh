@@ -56,18 +56,14 @@ declare -r KUBEVIRT_ENABLE=${KUBEVIRT_ENABLE:-false}
 declare -r LIBBPF_VERSION=${LIBBPF_VERSION:-v1.2.0}
 declare -r RESTARTCONTAINERRUNTIME=${RESTARTCONTAINERRUNTIME:-false}
 declare -r REDHAT_SUB=${REDHAT_SUB:-false}
+declare -r CLUSTER_CONFIG=${CLUSTER_CONFIG:-true}
 
 source "$PROJECT_ROOT/lib/utils.sh"
 
 config_cluster() {
-	kubeconfig="$KUBECONFIG_ROOT_DIR/config":$(find "$KUBECONFIG_ROOT_DIR" \
-		-type f -name "*config*" | tr '\n' ':')
-	kubeconfig=${kubeconfig%:}
-	KUBECONFIG=$kubeconfig kubectl config view --merge --flatten >all-in-one-kubeconfig.yaml
-	mv -f all-in-one-kubeconfig.yaml "${KUBECONFIG_ROOT_DIR}/config"
-
+	info "start config cluster"
 	export KUBECONFIG="${KUBECONFIG_ROOT_DIR}/$KEPLER_KUBECONFIG"
-
+	info "finish load kubeconfig"
 	if is_set "$PROMETHEUS_ENABLE" || is_set "$GRAFANA_ENABLE"; then
 		source "$PROJECT_ROOT/lib/prometheus.sh"
 		deploy_prometheus_operator
@@ -98,7 +94,15 @@ cluster_up() {
 	mkdir -p "$(basename "$KUBECONFIG_ROOT_DIR")"
 	mv -f "$kubeconfig" "${KUBECONFIG_ROOT_DIR}/${KEPLER_KUBECONFIG}"
 
-	config_cluster
+	kubeconfig="$KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG":$(find "$KUBECONFIG_ROOT_DIR" \
+		-type f -name "*config*" | tr '\n' ':')
+	kubeconfig=${kubeconfig%:}
+	KUBECONFIG=$kubeconfig kubectl config view --merge --flatten >all-in-one-kubeconfig.yaml
+	mv -f all-in-one-kubeconfig.yaml "${KUBECONFIG_ROOT_DIR}/config"
+
+	if is_set "$CLUSTER_CONFIG"; then
+		config_cluster
+	fi
 }
 
 cluster_down() {
@@ -107,8 +111,6 @@ cluster_down() {
 }
 
 print_config() {
-	local cluster_config
-	cluster_config=$("${CLUSTER_PROVIDER}"_print_config)
 
 	local prom_install_msg="$PROMETHEUS_ENABLE"
 	if ! is_set "$PROMETHEUS_ENABLE" && is_set "$GRAFANA_ENABLE"; then
@@ -136,7 +138,6 @@ print_config() {
 		KubeVirt
 		  * Install KubeVirt : $KUBEVIRT_ENABLE
 
-		$cluster_config
 		━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 	EOF
@@ -265,6 +266,7 @@ main() {
 		;;
 	config)
 		source "$cluster_lib"
+		print_config
 		config_cluster
 		return $?
 		;;
