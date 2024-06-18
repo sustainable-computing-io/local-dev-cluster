@@ -1,9 +1,9 @@
 name: "units-test"
 on:
-  # works for mannual, in case of github agent updated. 
+  # works for mannual, in case of github agent updated.
   # we can run mannually to see if it can be fixed by update version of
   # - kubectl
-  # - k8s cluster provider's 
+  # - k8s cluster provider's
   workflow_dispatch:
   pull_request:
   push:
@@ -48,11 +48,11 @@ jobs:
           PROMETHEUS_ENABLE: true
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: false
-          LOADPROMETHEUSIMAGE: true     
+          LOADPROMETHEUSIMAGE: true
     steps:
     - uses: actions/checkout@v3
     - name: start from local
-      run: | 
+      run: |
         export PROMETHEUS_ENABLE=${{matrix.PROMETHEUS_ENABLE}}
         export PROMETHEUS_OPERATOR_VERSION=${{matrix.prometheus_operator_version}}
         export GRAFANA_ENABLE=${{matrix.GRAFANA_ENABLE}}
@@ -121,4 +121,3 @@ jobs:
           #,linux/arm64,linux/s390x later
           push: false
           tags: testcontainer:latest
-

@@ -1,9 +1,9 @@
 name: "Reminder"
 on:
-  # works for mannual, in case of github agent updated. 
+  # works for mannual, in case of github agent updated.
   # we can run mannually to see if it can be fixed by update version of
   # - kubectl
-  # - k8s cluster provider's 
+  # - k8s cluster provider's
   schedule: [{cron: "0 0 1 */3 *"}]
 
 jobs:
@@ -16,5 +16,5 @@ jobs:
       with:
         title: AutoBumpUpVersionReminder
         body: |-
-          :wave: Hi maintainers, please remind to bump version for kind, microshift or any dependency for github action! 
+          :wave: Hi maintainers, please remind to bump version for kind, microshift or any dependency for github action!
         pinned: true

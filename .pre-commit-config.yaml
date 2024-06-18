@@ -1,0 +1,22 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.3.0
+  hooks:
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+- repo: https://github.com/markdownlint/markdownlint.git
+  rev: v0.13.0
+  hooks:
+  - id: markdownlint_docker
+  name: Markdownlint Docker
+  description: Run markdown lint on your Markdown files using the project docker image
+  language: docker_image
+  files: \.(md|mdown|markdown)$
+  entry: markdownlint/markdownlint
+- repo: https://github.com/shellcheck-py/shellcheck-py
+  rev: v0.10.0.1
+  hooks:
+  -   id: shellcheck
