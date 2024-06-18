@@ -16,7 +16,7 @@
 #
 # Copyright 2023 The Kepler Contributors
 #
-
+# shellcheck disable=SC1091
 set -eu -o pipefail
 
 # NOTE: PROJECT_ROOT is the root the local-dev-cluster project
@@ -86,7 +86,7 @@ config_cluster() {
 
 cluster_up() {
 	"${CLUSTER_PROVIDER}_up"
-	
+
 	info "Copying $CLUSTER_PROVIDER kubeconfig to $KUBECONFIG_ROOT_DIR/$KEPLER_KUBECONFIG"
 	local kubeconfig
 	kubeconfig="$("${CLUSTER_PROVIDER}"_kubeconfig)"
@@ -180,7 +180,6 @@ ebpf() {
 			cd /tmp/elfutils-source/elfutils-0.189
 			./configure --disable-debuginfod
 			make install
-			
 			mkdir -p /tmp/libbpf-source
 			cd /tmp/libbpf-source
 			yumdownloader --source libbpf
