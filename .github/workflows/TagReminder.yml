@@ -16,5 +16,5 @@ jobs:
       with:
         title: AutoBumpUpVersionReminder
         body: |-
-          :wave: Hi maintainers, please remind to bump version for kind, microshift or any dependency for github action!
+          :wave: Hi maintainers, please remind to bump version for kind or any dependency for github action!
         pinned: true
