@@ -28,7 +28,7 @@ declare -r MONITORING_NS="monitoring"
 declare -r DASHBOARD_DIR="$KUBE_PROM_DIR/grafana-dashboards"
 declare KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON
 
-KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON=$( curl -fsSL https://raw.githubusercontent.com/sustainable-computing-io/kepler/main/grafana-dashboards/Kepler-Exporter.json | sed '1 ! s/^/         /' )
+KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON=$(curl -fsSL https://raw.githubusercontent.com/sustainable-computing-io/kepler/main/grafana-dashboards/Kepler-Exporter.json | sed '1 ! s/^/         /')
 
 deploy_prometheus_operator() {
 
@@ -96,11 +96,7 @@ _load_prometheus_operator_images_to_local_registry() {
 
 	header "Load prometheus operator images to local registry"
 	local registry
-	if [[ "$CLUSTER_PROVIDER" == "kind" ]]; then
-		registry="localhost:${REGISTRY_PORT}"
-	else
-		registry="${MICROSHIFT_REGISTRY_NAME}:5000"
-	fi
+	registry="localhost:${REGISTRY_PORT}"
 
 	local updated_image
 	for img in $(_get_prometheus_operator_images); do
@@ -118,13 +114,13 @@ _load_prometheus_operator_images_to_local_registry() {
 	done
 }
 
-_setup_dashboard_configmap(){
+_setup_dashboard_configmap() {
 	if [ -f "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" ]; then
 		return 0
 	else
-	header "Create Dashboard Configmap"
-	mkdir -p "$DASHBOARD_DIR/grafana-dashboards/"
-	cat - > "$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" << EOF
+		header "Create Dashboard Configmap"
+		mkdir -p "$DASHBOARD_DIR/grafana-dashboards/"
+		cat - >"$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" <<EOF
 apiVersion: v1
 data:
     kepler-exporter.json: |-
@@ -139,22 +135,22 @@ metadata:
     name: grafana-dashboard-kepler-exporter
     namespace: monitoring
 EOF
-    fi
-    ok "Create Dashboard Configmap"
+	fi
+	ok "Create Dashboard Configmap"
 }
 
 _add_dashboard_to_grafana() {
-    header "Edit Kepler Grafana Dashboard "
+	header "Edit Kepler Grafana Dashboard "
 	f="$DASHBOARD_DIR/grafana-dashboards/kepler-exporter-configmap.yaml" \
-	yq -i e '.items += [load(env(f))]' "$KUBE_PROM_DIR"/manifests/grafana-dashboardDefinitions.yaml;
+		yq -i e '.items += [load(env(f))]' "$KUBE_PROM_DIR"/manifests/grafana-dashboardDefinitions.yaml
 	yq -i e '.spec.template.spec.containers.0.volumeMounts += [ {"mountPath": "/grafana-dashboard-definitions/0/kepler-exporter", "name": "grafana-dashboard-kepler-exporter", "readOnly": false} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml
-	yq -i e '.spec.template.spec.volumes += [ {"configMap": {"name": "grafana-dashboard-kepler-exporter"}, "name": "grafana-dashboard-kepler-exporter"} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml;
+	yq -i e '.spec.template.spec.volumes += [ {"configMap": {"name": "grafana-dashboard-kepler-exporter"}, "name": "grafana-dashboard-kepler-exporter"} ]' "$KUBE_PROM_DIR"/manifests/grafana-deployment.yaml
 	ok "Dashboard setup complete"
 }
 
 _deploy_grafana() {
 	header "Deploy Grafana"
 	find kube-prometheus/manifests -name 'grafana-*.yaml' -type f \
-				-exec kubectl create -f {} \;
+		-exec kubectl create -f {} \;
 	ok "Grafana deployed"
 }

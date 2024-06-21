@@ -37,18 +37,6 @@ jobs:
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: true
           LOADPROMETHEUSIMAGE: true
-        - cluster_provider: microshift
-          prometheus_operator_version: v0.12.0
-          PROMETHEUS_ENABLE: false
-          GRAFANA_ENABLE: false
-          TEKTON_ENABLE: false
-          LOADPROMETHEUSIMAGE: true
-        - cluster_provider: microshift
-          prometheus_operator_version: v0.12.0
-          PROMETHEUS_ENABLE: true
-          GRAFANA_ENABLE: true
-          TEKTON_ENABLE: false
-          LOADPROMETHEUSIMAGE: true
     steps:
     - uses: actions/checkout@v3
     - name: start from local

@@ -3,7 +3,7 @@
 ![GitHub](https://img.shields.io/github/license/sustainable-computing-io/local-dev-cluster)
 [![units-test](https://github.com/sustainable-computing-io/local-dev-cluster/actions/workflows/test.yml/badge.svg)](https://github.com/sustainable-computing-io/local-dev-cluster/actions/workflows/test.yml)
 
-This repo provides the scripts to create a local [kubernetes](kind/kind.sh)/[openshift](microshift/microshift.sh)
+This repo provides the scripts to create a local [kubernetes](kind/kind.sh)
 cluster to be used for development or integration tests. It is also used in
 [Github action](https://github.com/sustainable-computing-io/kepler-action) for kepler.
 
@@ -39,23 +39,13 @@ Will setup container runtime on your host instance.
 
 1. Modify kind [config](./kind/manifests/kind.yml) to make sure `extraMounts:` cover
    the linux header and BCC.
-1. Export `CLUSTER_PROVIDER` env variable:
-
-    ```bash
-    export CLUSTER_PROVIDER=kind
-
-    or
-
-    export CLUSTER_PROVIDER=microshift
-    ```
-
-1. To setup local env run:
+2. To setup local env run:
 
     ```bash
     ./main.sh up
     ```
 
-1. To tear down local env run:
+3. To tear down local env run:
 
     ```bash
     ./main.sh down
@@ -67,8 +57,6 @@ Will setup container runtime on your host instance.
     ```sh
     #.env
 
-    CLUSTER_PROVIDER=microshift
-    CLUSTER_NAME=microshift
     PROMETHEUS_ENABLE=false
     GRAFANA_ENABLE=false
     TEKTON_ENABLE=false
@@ -80,10 +68,6 @@ Will setup container runtime on your host instance.
     ```sh
     ./main.sh up
     ```
-
-1. kubeconfig
-
-Following the hint on your terminal to find out the kubeconfig.
 
 ## Container registry
 

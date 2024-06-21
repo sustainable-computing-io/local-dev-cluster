@@ -30,7 +30,6 @@ declare -r PROJECT_ROOT CALLER_PROJECT_ROOT
 # NOTE: define environment variables in this file to set the defaults
 #
 # CTR_CMD=podman
-# CLUSTER_PROVIDER=microshift
 #
 # # 💡 tip: honor env variables if set explicitly using the technique below
 # #         This allows PROMETHEUS_ENABLE=true ./main.sh up to override the
@@ -72,7 +71,7 @@ config_cluster() {
 	if is_set "$TEKTON_ENABLE"; then
 		kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 		rollout_ns_status tekton-pipelines
-        rollout_ns_status tekton-pipelines-resolvers
+		rollout_ns_status tekton-pipelines-resolvers
 	fi
 
 	# install kubevirt per https://kubevirt.io/quickstart_kind/
@@ -156,7 +155,7 @@ linuxHeader() {
 
 ebpf() {
 	if [ -f /usr/bin/apt-get ]; then
-		sudo apt-get install -y binutils-dev build-essential  pkg-config libelf-dev
+		sudo apt-get install -y binutils-dev build-essential pkg-config libelf-dev
 		mkdir -p temp-libbpf
 		cd temp-libbpf
 		git clone -b "$LIBBPF_VERSION" https://github.com/libbpf/libbpf
@@ -217,9 +216,9 @@ containerruntime() {
 		chmod a+r /etc/apt/keyrings/docker.gpg
 		# Add the repository to Apt sources:
 		echo \
-				"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-				$(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-				tee /etc/apt/sources.list.d/docker.list > /dev/null
+			"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+				$(. /etc/os-release && echo "$VERSION_CODENAME") stable" |
+			tee /etc/apt/sources.list.d/docker.list >/dev/null
 		apt-get update -y
 		apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 	fi
@@ -245,7 +244,6 @@ main() {
 	}
 
 	# shellcheck source=providers/kind/kind.sh
-	# shellcheck source=providers/microshift/microshift.sh
 
 	case "$1" in
 	prerequisites)
