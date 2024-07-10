@@ -5,6 +5,9 @@ kube-prometheus/
 .vscode/
 .idea/
 *.iml
+bin/
+lib/python3.12
+pyvenv.cfg
 
 # Logs
 logs
