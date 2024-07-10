@@ -37,12 +37,15 @@ Will setup container runtime on your host instance.
 
 ## Startup
 
+**note**: in 2024 July, we decoupled cluster config with kind cluster setup, so that we allow this repo to set up a existing cluster.
+
 1. Modify kind [config](./kind/manifests/kind.yml) to make sure `extraMounts:` cover
    the linux header and BCC.
 2. To setup local env run:
 
     ```bash
     ./main.sh up
+    ./main.sh config
     ```
 
 3. To tear down local env run:
@@ -67,6 +70,7 @@ Will setup container runtime on your host instance.
 
     ```sh
     ./main.sh up
+    ./main.sh config
     ```
 
 ## Container registry
