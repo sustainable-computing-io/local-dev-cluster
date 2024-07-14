@@ -32,7 +32,7 @@ jobs:
       matrix:
         include:
         - cluster_provider: kind
-          prometheus_operator_version: v0.12.0
+          prometheus_operator_version: v0.13.0
           PROMETHEUS_ENABLE: true
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: true

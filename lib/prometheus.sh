@@ -18,7 +18,7 @@
 #
 
 # configuration
-declare -r PROMETHEUS_OPERATOR_VERSION=${PROMETHEUS_OPERATOR_VERSION:-v0.11.0}
+declare -r PROMETHEUS_OPERATOR_VERSION=${PROMETHEUS_OPERATOR_VERSION:-v0.13.0}
 declare -r PROMETHEUS_REPLICAS=${PROMETHEUS_REPLICAS:-1}
 declare -r LOADPROMETHEUSIMAGE=${LOADPROMETHEUSIMAGE:-false}
 
@@ -48,17 +48,23 @@ deploy_prometheus_operator() {
 		if is_set "$LOADPROMETHEUSIMAGE"; then
 			_load_prometheus_operator_images_to_local_registry
 		fi
-		kubectl create -f kube-prometheus/manifests/setup
-		kubectl wait \
-			--for condition=Established \
-			--all CustomResourceDefinition \
-			--namespace="$MONITORING_NS"
+		#kubectl create -f kube-prometheus/manifests/setup
+		#kubectl wait \
+		#	--for condition=Established \
+		#	--all CustomResourceDefinition \
+		#	--namespace="$MONITORING_NS"
 
-		find kube-prometheus/manifests -name 'prometheusOperator-*.yaml' -type f \
-			-exec kubectl create -f {} \;
+		#find kube-prometheus/manifests -name 'prometheusOperator-*.yaml' -type f \
+		#	-exec kubectl create -f {} \;
 
-		find kube-prometheus/manifests -name 'prometheus-*.yaml' -type f \
-			-exec kubectl create -f {} \;
+		#find kube-prometheus/manifests -name 'prometheus-*.yaml' -type f \
+		#	-exec kubectl create -f {} \;
+
+		kubectl apply --server-side --validate=false -f kube-prometheus/manifests/setup
+		kubectl apply --validate=false -f kube-prometheus/manifests/
+		until kubectl -n monitoring get statefulset prometheus-k8s; do kubectl get all -n monitoring; echo "StatefulSet not created yet, waiting..."; sleep 5; done
+		kubectl wait deployments -n monitoring prometheus-adapter --for=condition=available --timeout 3m
+		 kubectl rollout status --watch --timeout=600s statefulset -n monitoring prometheus-k8s
 
 		is_set "$GRAFANA_ENABLE" && {
 			# Double check yq is available
