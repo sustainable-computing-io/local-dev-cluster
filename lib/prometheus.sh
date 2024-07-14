@@ -54,13 +54,16 @@ deploy_prometheus_operator() {
 			--all CustomResourceDefinition \
 			--namespace="$MONITORING_NS"
 
-		#find kube-prometheus/manifests -name 'prometheusOperator-*.yaml' -type f \
-		#	-exec kubectl create -f {} \;
+		find kube-prometheus/manifests -name 'prometheusOperator-*.yaml' -type f \
+			-exec kubectl create -f {} \;
 
-		#find kube-prometheus/manifests -name 'prometheus-*.yaml' -type f \
-		#	-exec kubectl create -f {} \;
+		find kube-prometheus/manifests -name 'prometheus-*.yaml' -type f \
+			-exec kubectl create -f {} \;
 
-		kubectl apply --validate=false -f kube-prometheus/manifests/
+		find kube-prometheus/manifests -name 'prometheusAdapter-*.yaml' -type f \
+			-exec kubectl create -f {} \;
+
+		#kubectl apply --validate=false -f kube-prometheus/manifests/
 		until kubectl -n monitoring get statefulset prometheus-k8s; do kubectl get all -n monitoring; echo "StatefulSet not created yet, waiting..."; sleep 5; done
 		kubectl wait deployments -n monitoring prometheus-adapter --for=condition=available --timeout 3m
 		kubectl rollout status --watch --timeout=600s statefulset -n monitoring prometheus-k8s
