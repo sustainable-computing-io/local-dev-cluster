@@ -135,3 +135,5 @@ To run pre-commit manually
 ```bash
 pre-commit run --all-files
 ```
+
+test from UI
