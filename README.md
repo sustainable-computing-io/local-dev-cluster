@@ -12,6 +12,7 @@ cluster to be used for development or integration tests. It is also used in
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installing-from-release-binaries)
 - [Git](https://git-scm.com/)
+- OPTIONAL: [pre-commit](https://pre-commit.com/)
 
 Please install the same version of `kubectl` and `kind` as Github-hosted runner.
 
@@ -135,4 +136,12 @@ To run pre-commit manually
 
 ```bash
 pre-commit run --all-files
+```
+
+To skip pre-commit checks, use the `--no-verify` flag when committing changes
+
+```bash
+git commit -m "test" --no-verify
+[precommit-shellcheck-mardown 89ed1adc] test
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 ```
