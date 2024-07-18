@@ -1,0 +1,29 @@
+---
+name: Markdown Quality Checks
+
+on:
+  pull_request:
+
+jobs:
+  run-quality-checks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: tj-actions/changed-files@v44
+      id: changed-markdown-files
+      with:
+        files: '**/*.md'
+        separator: ","
+
+    - name: Lint Markdown files
+      uses: DavidAnson/markdownlint-cli2-action@v16
+      if: steps.changed-markdown-files.outputs.any_changed == 'true'
+      with:
+        globs: ${{ steps.changed-markdown-files.outputs.all_changed_files }}
+        config: '.markdownlint.json'
+        fix: true
+        separator: ","
+      continue-on-error: false
