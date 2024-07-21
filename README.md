@@ -12,6 +12,7 @@ cluster to be used for development or integration tests. It is also used in
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installing-from-release-binaries)
 - [Git](https://git-scm.com/)
+- OPTIONAL: [pre-commit](https://pre-commit.com/)
 
 Please install the same version of `kubectl` and `kind` as Github-hosted runner.
 
@@ -37,7 +38,8 @@ Will setup container runtime on your host instance.
 
 ## Startup
 
-**note**: in 2024 July, we decoupled cluster config with kind cluster setup, so that we allow this repo to set up a existing cluster.
+> **_Note_**: in 2024 July, we decoupled cluster config with kind cluster setup,
+so that we allow this repo to set up a existing cluster.
 
 1. Modify kind [config](./kind/manifests/kind.yml) to make sure `extraMounts:` cover
    the linux header and BCC.
@@ -134,4 +136,12 @@ To run pre-commit manually
 
 ```bash
 pre-commit run --all-files
+```
+
+To skip pre-commit checks, use the `--no-verify` flag when committing changes
+
+```bash
+git commit -m "test" --no-verify
+[precommit-shellcheck-mardown 89ed1adc] test
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 ```

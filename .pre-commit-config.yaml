@@ -4,19 +4,14 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v2.3.0
   hooks:
-  - id: check-yaml
-  - id: end-of-file-fixer
-  - id: trailing-whitespace
-#- repo: https://github.com/markdownlint/markdownlint.git
-#  rev: v0.13.0
-#  hooks:
-  #- id: markdownlint_docker
-  #name: Markdownlint Docker
-  #description: Run markdown lint on your Markdown files using the project docker image
-  #language: docker_image
-  #files: \.(md|mdown|markdown)$
-  #entry: markdownlint/markdownlint
+    - id: check-yaml
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+- repo: https://github.com/DavidAnson/markdownlint-cli2
+  rev: v0.9.2
+  hooks:
+    - id: markdownlint-cli2-rules-docker
 - repo: https://github.com/shellcheck-py/shellcheck-py
   rev: v0.10.0.1
   hooks:
-  -   id: shellcheck
+    - id: shellcheck
