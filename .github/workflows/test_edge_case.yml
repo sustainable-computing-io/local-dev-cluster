@@ -43,7 +43,7 @@ jobs:
         export LOADPROMETHEUSIMAGE=true
         ./main.sh up
 
-test_local_cluster_withEdgeCase_file_wrong_env:
+  test_local_cluster_withEdgeCase_file_wrong_env:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
