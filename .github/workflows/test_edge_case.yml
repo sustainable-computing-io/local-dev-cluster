@@ -13,29 +13,47 @@ on:
 
 jobs:
   # test local cluster without prometheus grafana
-  test_local_cluster_withEdgeCase:
-    needs:
-      - shellcheck
+  test_local_cluster_withEdgeCase_folder_exists:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - cluster_provider: kind
-          prometheus_operator_version: v0.13.0
-          PROMETHEUS_ENABLE: true
-          GRAFANA_ENABLE: true
-          TEKTON_ENABLE: true
-          LOADPROMETHEUSIMAGE: true
     steps:
     - uses: actions/checkout@v3
     - name: start from local
       run: |
         mkdir -p /tmp/kubeconfig
-        export PROMETHEUS_ENABLE=${{matrix.PROMETHEUS_ENABLE}}
-        export PROMETHEUS_OPERATOR_VERSION=${{matrix.prometheus_operator_version}}
-        export GRAFANA_ENABLE=${{matrix.GRAFANA_ENABLE}}
-        export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
-        export TEKTON_ENABLE=${{matrix.TEKTON_ENABLE}}
-        export LOADPROMETHEUSIMAGE=${{matrix.LOADPROMETHEUSIMAGE}}
+        export PROMETHEUS_ENABLE=true
+        export PROMETHEUS_OPERATOR_VERSION=v0.13.0
+        export GRAFANA_ENABLE=true
+        export CLUSTER_PROVIDER=kind
+        export TEKTON_ENABLE=true
+        export LOADPROMETHEUSIMAGE=true
+        ./main.sh up
+
+  test_local_cluster_withEdgeCase_file_exists:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: start from local
+      run: |
+        echo 1 > /tmp/kubeconfig
+        export PROMETHEUS_ENABLE=true
+        export PROMETHEUS_OPERATOR_VERSION=v0.13.0
+        export GRAFANA_ENABLE=true
+        export CLUSTER_PROVIDER=kind
+        export TEKTON_ENABLE=true
+        export LOADPROMETHEUSIMAGE=true
+        ./main.sh up
+
+test_local_cluster_withEdgeCase_file_wrong_env:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: start from local
+      run: |
+        export KIND_DIR=/tmp
+        export PROMETHEUS_ENABLE=true
+        export PROMETHEUS_OPERATOR_VERSION=v0.13.0
+        export GRAFANA_ENABLE=true
+        export CLUSTER_PROVIDER=kind
+        export TEKTON_ENABLE=true
+        export LOADPROMETHEUSIMAGE=true
         ./main.sh up
