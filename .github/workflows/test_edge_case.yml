@@ -1,0 +1,41 @@
+name: "units-test-edge"
+on:
+  # works for mannual, in case of github agent updated.
+  # we can run mannually to see if it can be fixed by update version of
+  # - kubectl
+  # - k8s cluster provider's
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'releases/*'
+
+jobs:
+  # test local cluster without prometheus grafana
+  test_local_cluster_withEdgeCase:
+    needs:
+      - shellcheck
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - cluster_provider: kind
+          prometheus_operator_version: v0.13.0
+          PROMETHEUS_ENABLE: true
+          GRAFANA_ENABLE: true
+          TEKTON_ENABLE: true
+          LOADPROMETHEUSIMAGE: true
+    steps:
+    - uses: actions/checkout@v3
+    - name: start from local
+      run: |
+        mkdir -p /tmp/kubeconfig
+        export PROMETHEUS_ENABLE=${{matrix.PROMETHEUS_ENABLE}}
+        export PROMETHEUS_OPERATOR_VERSION=${{matrix.prometheus_operator_version}}
+        export GRAFANA_ENABLE=${{matrix.GRAFANA_ENABLE}}
+        export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
+        export TEKTON_ENABLE=${{matrix.TEKTON_ENABLE}}
+        export LOADPROMETHEUSIMAGE=${{matrix.LOADPROMETHEUSIMAGE}}
+        ./main.sh up
