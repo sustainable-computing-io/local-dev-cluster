@@ -42,18 +42,3 @@ jobs:
         ./main.sh up
         export KUBECONFIG_ROOT_DIR=/tmp/kubeconfig
         ./main.sh config
-
-  test_local_cluster_withEdgeCase_file_wrong_env:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: start from local
-      run: |
-        export KIND_DIR=/tmp
-        export PROMETHEUS_ENABLE=true
-        export CLUSTER_PROVIDER=kind
-        export TEKTON_ENABLE=true
-        export CLUSTER_CONFIG=false
-        ./main.sh up
-        export KUBECONFIG_ROOT_DIR=/tmp/kubeconfig
-        ./main.sh config

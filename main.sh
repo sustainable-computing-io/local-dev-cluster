@@ -90,6 +90,11 @@ cluster_up() {
 	local kubeconfig
 	kubeconfig="$("${CLUSTER_PROVIDER}"_kubeconfig)"
 
+	if [ -e "$KUBECONFIG_ROOT_DIR" ]; then   
+		info "there $KUBECONFIG_ROOT_DIR moving to bak file"
+		mv "$KUBECONFIG_ROOT_DIR" "$KUBECONFIG_ROOT_DIR"_bak
+	fi
+
 	mkdir -p "$(basename "$KUBECONFIG_ROOT_DIR")"
 	mv -f "$kubeconfig" "${KUBECONFIG_ROOT_DIR}/${KEPLER_KUBECONFIG}"
 
