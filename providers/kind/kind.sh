@@ -136,6 +136,7 @@ kind_up() {
 	kind_wait_up
 	_run_kind_registry
 	ok "kind cluster $KIND_CLUSTER_NAME is up and running"
+	kind_print_config
 }
 
 kind_down() {
