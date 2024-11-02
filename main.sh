@@ -57,21 +57,24 @@ declare -r RESTARTCONTAINERRUNTIME=${RESTARTCONTAINERRUNTIME:-false}
 declare -r REDHAT_SUB=${REDHAT_SUB:-false}
 declare -r CLUSTER_CONFIG=${CLUSTER_CONFIG:-true}
 
+declare -r TEKTON_INSTALL_URL="https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml"
+
 source "$PROJECT_ROOT/lib/utils.sh"
 
 config_cluster() {
 	info "start config cluster"
 	export KUBECONFIG="${KUBECONFIG_ROOT_DIR}/$KEPLER_KUBECONFIG"
 	info "finish load kubeconfig"
+
 	if is_set "$PROMETHEUS_ENABLE" || is_set "$GRAFANA_ENABLE"; then
 		source "$PROJECT_ROOT/lib/prometheus.sh"
 		deploy_prometheus_operator
 	fi
 
 	if is_set "$TEKTON_ENABLE"; then
-		kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
-		rollout_ns_status tekton-pipelines
-		rollout_ns_status tekton-pipelines-resolvers
+		kubectl apply --filename "$TEKTON_INSTALL_URL"
+		wait_for_resource 10 20 deployment Available tekton-pipelines-controller -n tekton-pipelines
+		wait_for_resource 10 20 deployment Available tekton-pipelines-webhook -n tekton-pipelines
 	fi
 
 	# install kubevirt per https://kubevirt.io/quickstart_kind/
