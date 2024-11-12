@@ -53,6 +53,8 @@ declare -r GRAFANA_ENABLE=${GRAFANA_ENABLE:-false}
 declare -r TEKTON_ENABLE=${TEKTON_ENABLE:-false}
 declare -r KUBEVIRT_ENABLE=${KUBEVIRT_ENABLE:-false}
 declare -r LIBBPF_VERSION=${LIBBPF_VERSION:-v1.2.0}
+declare -r KUBEBURNER_ENABLE=${KUBEBURNER_ENABLE:-false}
+declare -r KUBEBURNER_VERSION=${KUBEBURNER_VERSION:1.9.5}
 declare -r RESTARTCONTAINERRUNTIME=${RESTARTCONTAINERRUNTIME:-false}
 declare -r REDHAT_SUB=${REDHAT_SUB:-false}
 declare -r CLUSTER_CONFIG=${CLUSTER_CONFIG:-true}
@@ -83,6 +85,12 @@ config_cluster() {
 		kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/"${KUBEVIRT_VERSION}"/kubevirt-operator.yaml
 		kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/"${KUBEVIRT_VERSION}"/kubevirt-cr.yaml
 		rollout_ns_status kubevirt
+	fi
+
+	# install kube-burner v1.9.5
+	if is_set "$KUBEBURNER_ENABLE"; then
+		git clone -v https://github.com/kube-burner/kube-burner -b v"${KUBEBURNER_VERSION}"
+		curl -sS -L "https://github.com/kube-burner/kube-burner/releases/download/v"${KUBEBURNER_VERSION}"/kube-burner-V"${KUBEBURNER_VERSION}"-linux-x86_64.tar.gz" | tar -xzC kube-burner/ kube-burner
 	fi
 }
 
