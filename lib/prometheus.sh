@@ -28,7 +28,7 @@ declare -r MONITORING_NS="monitoring"
 declare -r DASHBOARD_DIR="$KUBE_PROM_DIR/grafana-dashboards"
 declare KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON
 
-KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON=$(curl -fsSL https://raw.githubusercontent.com/sustainable-computing-io/kepler/main/grafana-dashboards/Kepler-Exporter.json | sed '1 ! s/^/         /')
+KEPLER_EXPORTER_GRAFANA_DASHBOARD_JSON=$(curl -fsSL https://raw.githubusercontent.com/sustainable-computing-io/kepler/archived/grafana-dashboards/Kepler-Exporter.json | sed '1 ! s/^/         /')
 
 deploy_prometheus_operator() {
 
