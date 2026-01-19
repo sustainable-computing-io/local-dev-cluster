@@ -4,10 +4,11 @@ apiVersion: kind.x-k8s.io/v1alpha4
 networking:
   ipFamily: ipv4
 # create a cluster with the local registry enabled in containerd
+# Updated for containerd 2.0 (kind >= 0.24.0) - uses hosts.toml format
 containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
-    endpoint = ["http://kind-registry:5000"]
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
 nodes:
   - role: control-plane
     extraMounts:
@@ -15,5 +16,6 @@ nodes:
         containerPath: /proc-host
       - hostPath: /usr/src
         containerPath: /usr/src
-
-# NOTE: worker nodes will be added by the script here
+      # Mount certs.d directory for local registry (containerd 2.0+)
+      - hostPath: KIND_DIR_PLACEHOLDER/certs.d
+        containerPath: /etc/containerd/certs.d
