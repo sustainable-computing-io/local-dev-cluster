@@ -1,0 +1,3 @@
+# containerd registry hosts configuration for local registry
+# See: https://github.com/containerd/containerd/blob/main/docs/hosts.md
+[host."http://kind-registry:5000"]

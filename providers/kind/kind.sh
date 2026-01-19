@@ -63,9 +63,20 @@ _prepare_config() {
 	local default_registry_port="5001"
 
 	info "Building manifests..."
+
+	# Create certs.d directory structure for containerd 2.0+ local registry
+	# Structure: certs.d/localhost:PORT/hosts.toml
+	local certs_d_dir="$KIND_DIR/certs.d/localhost:${REGISTRY_PORT}"
+	mkdir -p "$certs_d_dir"
+	sed <"$KIND_MANIFESTS_DIR/hosts.toml" \
+		-e "s/$default_registry_name/${KIND_REGISTRY_NAME}/g" \
+		>"$certs_d_dir/hosts.toml"
+
+	# Generate kind config with registry settings and certs.d mount path
 	sed <"$KIND_MANIFESTS_DIR/kind.yml" \
 		-e "s/$default_registry_name/${KIND_REGISTRY_NAME}/g" \
 		-e "s/$default_registry_port/${REGISTRY_PORT}/g" \
+		-e "s|KIND_DIR_PLACEHOLDER|${KIND_DIR}|g" \
 		>"$KIND_CONFIG_YAML"
 
 	for ((i = 0; i < KIND_WORKER_NODES; i++)); do
@@ -76,6 +87,8 @@ _prepare_config() {
 			        containerPath: /proc-host
 			      - hostPath: /usr/src
 			        containerPath: /usr/src
+			      - hostPath: ${KIND_DIR}/certs.d
+			        containerPath: /etc/containerd/certs.d
 
 		EOF_NODE
 	done
@@ -151,10 +164,11 @@ kind_down() {
 	run $CTR_CMD rm -v -f "${KIND_REGISTRY_NAME}"
 
 	info "Removing all generated files"
-	run rm -f \
+	run rm -rf \
 		"$KIND_CONFIG_YAML" \
 		"$KIND_REGISTRY_YAML" \
-		"$KIND_KUBECONFIG"
+		"$KIND_KUBECONFIG" \
+		"$KIND_DIR/certs.d"
 
 	ok "kind cluster deleted successfully"
 }
