@@ -100,6 +100,11 @@ _prepare_config() {
 
 _setup_kind() {
 	info "Starting kind with cluster name \"${KIND_CLUSTER_NAME}\""
+
+	# Append ${KIND_REGISTRY_NAME} to the no_proxy variable to ensure the local
+	# kind registry was resolved correctly when behind a corporate proxy
+	export no_proxy="${no_proxy},${KIND_REGISTRY_NAME}"
+
 	run kind create cluster --name="${KIND_CLUSTER_NAME}" -v6 --config="$KIND_CONFIG_YAML"
 
 	info "Generating kubeconfig"
