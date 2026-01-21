@@ -37,6 +37,7 @@ jobs:
           GRAFANA_ENABLE: true
           TEKTON_ENABLE: true
           LOADPROMETHEUSIMAGE: true
+          KUBEBURNER_ENABLE: true
     steps:
     - uses: actions/checkout@v3
     - name: start from local
@@ -47,6 +48,7 @@ jobs:
         export CLUSTER_PROVIDER=${{matrix.cluster_provider}}
         export TEKTON_ENABLE=${{matrix.TEKTON_ENABLE}}
         export LOADPROMETHEUSIMAGE=${{matrix.LOADPROMETHEUSIMAGE}}
+        export KUBEBURNER_ENABLE=${{matrix.KUBEBURNER_ENABLE}}
         ./main.sh up
     - name: verify
       run: |
